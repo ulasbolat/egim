@@ -200,6 +200,16 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
   white-space:pre;pointer-events:none;letter-spacing:.03em}
 #hud.on{display:block}
 
+.rain{position:absolute;top:0;pointer-events:none;border-radius:4px;opacity:0;
+  animation:rainfall var(--dur) cubic-bezier(.32,.1,.72,1) forwards}
+.rain > svg{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+@keyframes rainfall{
+  0%  {transform:translate3d(0,-70px,0) rotate(0deg);opacity:0}
+  14% {opacity:1}
+  82% {opacity:1}
+  100%{transform:translate3d(var(--dx),var(--fall),0) rotate(var(--rot));opacity:0}
+}
+
 /* ---------- combo effects ---------- */
 .spark{position:absolute;border-radius:2px;pointer-events:none;
   animation:spark 480ms cubic-bezier(.15,.75,.35,1) forwards}
@@ -288,7 +298,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 <body>
 
 <header>
-  <div class="wordmark">EĞİM<small>SÜRÜM 13</small></div>
+  <div class="wordmark">EĞİM<small>SÜRÜM 14</small></div>
   <div class="scores">
     <div class="scorebox best"><div class="lbl">EN İYİ</div><div class="val" id="best">0</div></div>
     <div class="scorebox"><div class="lbl">SKOR</div><div class="val" id="score">0</div></div>
@@ -885,6 +895,34 @@ function shockAt(cells, chain){
   }
 }
 
+/* From a double chain up, the current collection falls through the tray:
+   ribbons for the gift set, snowflakes for ice, embers for fire, and so on. */
+function rain(chain){
+  const motif = MOTIF[theme] || "";
+  // chain steps overlap, so cap what can be on screen at once
+  const live = boardEl.getElementsByClassName("rain").length;
+  const room = (LEAN ? 18 : 30) - live;
+  if(room <= 0) return;
+  const count = Math.min(room, LEAN ? 16 : 26, 5 + chain * 4);
+  const span  = N * CELL;
+  for(let i=0;i<count;i++){
+    const sz = Math.round(CELL * (0.34 + Math.random()*0.30));
+    const e = document.createElement("div");
+    e.className = "rain";
+    const dur = 900 + Math.random()*700;
+    e.style.cssText =
+      `left:${Math.random()*(span-sz)}px;width:${sz}px;height:${sz}px;` +
+      `background:${COLORS[(Math.random()*COLORS.length)|0]};` +
+      `--dx:${((Math.random()*2-1)*CELL*1.4).toFixed(0)}px;` +
+      `--fall:${span + sz*2}px;` +
+      `--rot:${((Math.random()*2-1)*540).toFixed(0)}deg;` +
+      `--dur:${dur}ms;animation-delay:${(Math.random()*260).toFixed(0)}ms`;
+    if(motif) e.innerHTML = motif;
+    boardEl.appendChild(e);
+    setTimeout(()=>e.remove(), dur + 320);
+  }
+}
+
 function gainAt(cells, amount){
   let sr=0, sc=0;
   cells.forEach(([r,c])=>{ sr+=r; sc+=c; });
@@ -914,6 +952,7 @@ function flashLines(rows, cols){
 const MAX_CHAIN = 10;      // safety valve, see the seeding note below
 async function resolve(){
   let chain = 0;
+  const restoreSlide = ()=>document.documentElement.style.setProperty("--slide","130ms");
   while(chain < MAX_CHAIN){
     const {rows, cols} = fullLines(board);
     if(!rows.length && !cols.length) break;
@@ -944,14 +983,21 @@ async function resolve(){
       }
     });
     const gain = kill.size * 25 * Math.pow(2, chain-1) + anchorsFreed * 300 * Math.pow(2, chain-1);
-    if(gone.length && !REDUCED){ sparks(gone); shockAt(gone, chain); }
+    if(gone.length && !REDUCED){
+      sparks(gone); shockAt(gone, chain);
+      if(chain >= 2) rain(chain);
+    }
     if(gone.length) gainAt(gone, gain);
     if(anchorsFreed){
       bump(anchorsFreed * 300 * Math.pow(2, chain-1));
       tone(110, 0.34, {type:"sawtooth", gain:0.15, to:70});
       tone(660, 0.30, {type:"triangle", gain:0.13, delay:0.05});
     }
-    await sleep(95);
+    /* A chain is the payoff, so give it time to read. A lone clear stays quick
+       because that is most moves and nobody wants to wait for it. */
+    const slow = chain > 1;
+    document.documentElement.style.setProperty("--slide", slow ? "240ms" : "130ms");
+    await sleep(slow ? 200 : 105);
     renderBoard(true);
 
     // tip the tray: everything slides, and loose tiles roll in from the high side
@@ -976,10 +1022,11 @@ async function resolve(){
     renderBoard(true);
     dirIdx = (dirIdx+1) % 4;
     setDir();
-    await sleep(115);
+    await sleep(slow ? 230 : 125);
     trayEl.classList.remove("t-"+dir);
-    await sleep(40);
+    await sleep(slow ? 130 : 45);
   }
+  restoreSlide();
 }
 
 async function place(i, r0, c0){
