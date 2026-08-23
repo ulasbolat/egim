@@ -127,9 +127,9 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
   border-radius:4px 4px 8px 8px;background:linear-gradient(rgba(255,255,255,.34),rgba(255,255,255,0))}
 .tile.anchor{
   background-image:
-    radial-gradient(circle at 50% 50%, #E3E9F2 0 16%, transparent 17%),
-    radial-gradient(circle at 50% 50%, transparent 0 22%, #10131A 23% 32%, transparent 33%),
-    linear-gradient(150deg, #97A2B4, #6C7788 55%, #515B6B);
+    radial-gradient(circle at 50% 50%, #F0C560 0 17%, transparent 18%),
+    radial-gradient(circle at 50% 50%, transparent 0 23%, #12161D 24% 33%, transparent 34%),
+    linear-gradient(150deg, #A7B2C2, #7B8697 55%, #5D6879);
   box-shadow:0 0 0 2px #10131A inset, 0 0 0 5px rgba(255,255,255,.22) inset,
              0 5px 0 -2px rgba(0,0,0,.4);
 }
@@ -857,7 +857,7 @@ async function resolve(){
     SFX.tilt();
     gravity(dir);
     clears++;
-    const want = Math.floor(clears/4) % THEMES.length;
+    const want = Math.floor(clears/2) % THEMES.length;
     if(want !== theme) setTheme(want, true);
     const k = (rows.length + cols.length) * Math.min(5, 2 + Math.floor(clears/12));
     const anchorsIn = seedFrom(dir, k);
@@ -1020,6 +1020,21 @@ function moveDrag(x, y){
   if(!rafId) rafId = requestAnimationFrame(flushDrag);
 }
 
+/* Pointer capture is unreliable on mobile Safari: once the finger leaves the
+   tray the events go to whatever is underneath, so the piece appears stuck and
+   only lets go when you come back over the tray. Listening on the window for
+   the duration of the drag avoids the whole problem. */
+function onWinMove(e){ if(drag){ e.preventDefault(); moveDrag(e.clientX, e.clientY); } }
+function onWinUp(e){ if(drag){ moveDrag(e.clientX, e.clientY); endDrag(); } }
+function onWinCancel(){ if(drag){ drag = null; resetDragVisuals(); } }   // abort, place nothing
+
+function bindDragListeners(on){
+  const m = on ? "addEventListener" : "removeEventListener";
+  window[m]("pointermove", onWinMove, {passive:false});
+  window[m]("pointerup", onWinUp);
+  window[m]("pointercancel", onWinCancel);
+}
+
 handEl.addEventListener("pointerdown", e=>{
   if(busy || over) return;
   const slot = e.target.closest(".slot");
@@ -1033,9 +1048,12 @@ handEl.addEventListener("pointerdown", e=>{
   dragEl.innerHTML = "";
   dragEl.appendChild(pieceNode(hand[i], CELL));
   moveDrag(e.clientX, e.clientY);
-  handEl.setPointerCapture(e.pointerId);
+  bindDragListeners(true);
+  try{ handEl.setPointerCapture(e.pointerId); }catch(err){}
 });
-handEl.addEventListener("pointermove", e=>{ if(drag){ e.preventDefault(); moveDrag(e.clientX, e.clientY); } });
+// stop iOS deciding mid-drag that this was a scroll and cancelling the pointer
+handEl.addEventListener("touchstart", e=>e.preventDefault(), {passive:false});
+handEl.addEventListener("touchmove",  e=>e.preventDefault(), {passive:false});
 
 function resetDragVisuals(){
   if(rafId){ cancelAnimationFrame(rafId); rafId = 0; }
@@ -1043,6 +1061,7 @@ function resetDragVisuals(){
   dragEl.innerHTML = "";
   dragEl.classList.remove("bad");
   dragEl.style.transform = "translate3d(-9999px,-9999px,0)";
+  bindDragListeners(false);
   clearGhost();
   handEl.querySelectorAll(".held").forEach(s=>s.classList.remove("held"));
 }
@@ -1062,9 +1081,6 @@ async function endDrag(){
   }
   await place(d.i, d.r, d.c);        // if it does not fit, nothing happens
 }
-handEl.addEventListener("pointerup", endDrag);
-handEl.addEventListener("pointercancel", endDrag);
-handEl.addEventListener("lostpointercapture", ()=>{ if(!drag) resetDragVisuals(); });
 window.addEventListener("blur", ()=>{ if(drag){ drag = null; resetDragVisuals(); } });
 document.addEventListener("visibilitychange", ()=>{
   if(document.hidden && drag){ drag = null; resetDragVisuals(); }
