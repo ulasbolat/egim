@@ -200,6 +200,14 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
   white-space:pre;pointer-events:none;letter-spacing:.03em}
 #hud.on{display:block}
 
+.wipe{position:absolute;border-radius:4px;opacity:0;pointer-events:none;
+  animation:wipe 950ms cubic-bezier(.3,.72,.4,1) forwards}
+@keyframes wipe{
+  0%  {transform:translateY(-170%);opacity:0}
+  15% {transform:translateY(0);opacity:1}
+  50% {transform:translateY(0);opacity:1}
+  100%{transform:translateY(175%);opacity:0}
+}
 .rain{position:absolute;top:0;pointer-events:none;opacity:0;
   animation:rainfall var(--dur) cubic-bezier(.32,.1,.72,1) forwards}
 .rain > svg{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
@@ -299,7 +307,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 <body>
 
 <header>
-  <div class="wordmark">EĞİM<small>SÜRÜM 17</small></div>
+  <div class="wordmark">EĞİM<small>SÜRÜM 18</small></div>
   <div class="scores">
     <div class="scorebox best"><div class="lbl">EN İYİ</div><div class="val" id="best">0</div></div>
     <div class="scorebox"><div class="lbl">SKOR</div><div class="val" id="score">0</div></div>
@@ -362,22 +370,22 @@ const DIRNAME = {down:"AŞAĞI", left:"SOLA", up:"YUKARI", right:"SAĞA"};
 // ---- shapes: no rotation in-game, so every rotation is its own piece ----
 const SHAPES = [
  // --- tek kare ve çizgiler ---
- {w:3,c:[[0,0]]},
- {w:5,c:[[0,0],[0,1]]},                      {w:5,c:[[0,0],[1,0]]},
- {w:5,c:[[0,0],[0,1],[0,2]]},                {w:5,c:[[0,0],[1,0],[2,0]]},
- {w:3,c:[[0,0],[0,1],[0,2],[0,3]]},          {w:3,c:[[0,0],[1,0],[2,0],[3,0]]},
- {w:1,c:[[0,0],[0,1],[0,2],[0,3],[0,4]]},    {w:1,c:[[0,0],[1,0],[2,0],[3,0],[4,0]]},
+ {w:1,c:[[0,0]]},
+ {w:3,c:[[0,0],[0,1]]},                      {w:3,c:[[0,0],[1,0]]},
+ {w:4,c:[[0,0],[0,1],[0,2]]},                {w:4,c:[[0,0],[1,0],[2,0]]},
+ {w:4,c:[[0,0],[0,1],[0,2],[0,3]]},          {w:4,c:[[0,0],[1,0],[2,0],[3,0]]},
+ {w:2,c:[[0,0],[0,1],[0,2],[0,3],[0,4]]},    {w:2,c:[[0,0],[1,0],[2,0],[3,0],[4,0]]},
  // --- dikdörtgenler ---
  {w:4,c:[[0,0],[0,1],[1,0],[1,1]]},                                   // 2x2
- {w:2,c:[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2]]},                       // 2x3
- {w:2,c:[[0,0],[0,1],[1,0],[1,1],[2,0],[2,1]]},                       // 3x2
+ {w:3,c:[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2]]},                       // 2x3
+ {w:3,c:[[0,0],[0,1],[1,0],[1,1],[2,0],[2,1]]},                       // 3x2
  {w:1,c:[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]]},     // 3x3
  // --- küçük L (3 kare), 4 dönüş ---
- {w:3,c:[[0,0],[1,0],[1,1]]},  {w:3,c:[[0,0],[0,1],[1,0]]},
- {w:3,c:[[0,0],[0,1],[1,1]]},  {w:3,c:[[0,1],[1,0],[1,1]]},
+ {w:2,c:[[0,0],[1,0],[1,1]]},  {w:2,c:[[0,0],[0,1],[1,0]]},
+ {w:2,c:[[0,0],[0,1],[1,1]]},  {w:2,c:[[0,1],[1,0],[1,1]]},
  // --- T tetromino, 4 dönüş ---
- {w:2,c:[[0,1],[1,0],[1,1],[1,2]]},  {w:2,c:[[0,0],[0,1],[0,2],[1,1]]},
- {w:2,c:[[0,0],[1,0],[1,1],[2,0]]},  {w:2,c:[[0,1],[1,0],[1,1],[2,1]]},
+ {w:3,c:[[0,1],[1,0],[1,1],[1,2]]},  {w:3,c:[[0,0],[0,1],[0,2],[1,1]]},
+ {w:3,c:[[0,0],[1,0],[1,1],[2,0]]},  {w:3,c:[[0,1],[1,0],[1,1],[2,1]]},
  // --- S ve Z tetromino, 4 dönüş ---
  {w:2,c:[[0,1],[0,2],[1,0],[1,1]]},  {w:2,c:[[0,0],[0,1],[1,1],[1,2]]},
  {w:2,c:[[0,0],[1,0],[1,1],[2,1]]},  {w:2,c:[[0,1],[1,0],[1,1],[2,0]]},
@@ -388,8 +396,8 @@ const SHAPES = [
  {w:2,c:[[0,2],[1,0],[1,1],[1,2]]},  {w:2,c:[[0,0],[1,0],[2,0],[2,1]]},
  {w:2,c:[[0,0],[0,1],[0,2],[1,0]]},  {w:2,c:[[0,0],[0,1],[1,1],[2,1]]},
  // --- büyük L / V pentomino, 4 dönüş ---
- {w:1,c:[[0,0],[1,0],[2,0],[2,1],[2,2]]},  {w:1,c:[[0,0],[0,1],[0,2],[1,0],[2,0]]},
- {w:1,c:[[0,0],[0,1],[0,2],[1,2],[2,2]]},  {w:1,c:[[0,2],[1,2],[2,0],[2,1],[2,2]]},
+ {w:2,c:[[0,0],[1,0],[2,0],[2,1],[2,2]]},  {w:2,c:[[0,0],[0,1],[0,2],[1,0],[2,0]]},
+ {w:2,c:[[0,0],[0,1],[0,2],[1,2],[2,2]]},  {w:2,c:[[0,2],[1,2],[2,0],[2,1],[2,2]]},
  // --- artı ---
  {w:1,c:[[0,1],[1,0],[1,1],[1,2],[2,1]]}
 ];
@@ -743,7 +751,7 @@ function completesALine(shape, spots){
    somewhere, and the fuller the tray gets the more it leans toward pieces that
    fit well - but never so far that it plays the game for you. Tuned to 0.4 by
    simulation: below that you get dealt junk, above it the game stops ending. */
-const ASSIST_K = 0.4;
+const ASSIST_K = 0.75;
 
 function pickPiece(assist){
   const cands = [];
@@ -969,6 +977,23 @@ function rain(chain){
   setTimeout(()=>batch.forEach(e=>e.remove()), maxLife + 400);
 }
 
+/* At 3x the whole tray floods with tiles and then drains away downward.
+   64 plain divs, one insertion, one timer - it only fires on a deep chain. */
+function bigWipe(){
+  if(REDUCED) return;
+  const frag = document.createDocumentFragment(), batch = [];
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    const e = document.createElement("div");
+    e.className = "wipe";
+    e.style.cssText =
+      `left:${c*CELL+GAP/2}px;top:${r*CELL+GAP/2}px;width:${CELL-GAP}px;height:${CELL-GAP}px;` +
+      `background:${COLORS[(r*3+c) % COLORS.length]};animation-delay:${r*26}ms`;
+    frag.appendChild(e); batch.push(e);
+  }
+  boardEl.appendChild(frag);
+  setTimeout(()=>batch.forEach(e=>e.remove()), 1250);
+}
+
 function gainAt(cells, amount){
   let sr=0, sc=0;
   cells.forEach(([r,c])=>{ sr+=r; sc+=c; });
@@ -1031,6 +1056,7 @@ async function resolve(){
     if(gone.length && !REDUCED){
       sparks(gone); shockAt(gone, chain);
       if(chain >= 2) rain(chain);
+      if(chain === 3) bigWipe();
     }
     if(gone.length) gainAt(gone, gain);
     if(anchorsFreed){
@@ -1038,7 +1064,10 @@ async function resolve(){
       tone(110, 0.34, {type:"sawtooth", gain:0.15, to:70});
       tone(660, 0.30, {type:"triangle", gain:0.13, delay:0.05});
     }
-    await sleep(95);
+    // A chain deserves to be seen; a single clear should not cost you time.
+    const slow = chain > 1;
+    document.documentElement.style.setProperty("--slide", slow ? "200ms" : "130ms");
+    await sleep(slow ? 150 : 95);
     renderBoard(true);
 
     // tip the tray: everything slides, and loose tiles roll in from the high side
@@ -1063,10 +1092,11 @@ async function resolve(){
     renderBoard(true);
     dirIdx = (dirIdx+1) % 4;
     setDir();
-    await sleep(115);
+    await sleep(slow ? 175 : 115);
     trayEl.classList.remove("t-"+dir);
-    await sleep(40);
+    await sleep(slow ? 70 : 40);
   }
+  document.documentElement.style.setProperty("--slide","130ms");
 }
 
 async function place(i, r0, c0){
@@ -1177,7 +1207,7 @@ function showGhost(shape, r0, c0){
 let byTouch = false;                       // set by whichever input started the drag
 /* A fingertip covers roughly a cell, so on touch the piece has to float clear
    of it or you are aiming blind. A mouse cursor hides nothing, so it sits close. */
-const lift = () => Math.round(CELL * (byTouch ? 0.38 : 0.25));
+const lift = () => Math.round(CELL * (byTouch ? 0.20 : 0.25));
 
 function dragOffset(shape){
   const [h,w] = dims(shape);
