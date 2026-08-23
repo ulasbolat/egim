@@ -26,7 +26,7 @@
   --hi:#8A6A17;
   --cell:34px;
   --gap:3px;
-  --slide:260ms;
+  --slide:130ms;
 }
 /* the tray stays slate; what changes is the surface it sits on */
 body.t0{--plaster:#D6D8CE;--plaster-dk:#BEC1B5;--ink:#14161A;--hi:#8A6A17;
@@ -84,9 +84,9 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
 
 /* ---------- tray ---------- */
 .stage{position:relative}
-.stage.shake1{animation:shk1 170ms ease-out}
-.stage.shake2{animation:shk2 260ms ease-out}
-.stage.shake3{animation:shk3 380ms ease-out}
+.stage.shake1{animation:shk1 130ms ease-out}
+.stage.shake2{animation:shk2 190ms ease-out}
+.stage.shake3{animation:shk3 260ms ease-out}
 @keyframes shk1{0%,100%{transform:translate(0,0)}30%{transform:translate(-2px,1px)}
   60%{transform:translate(2px,-1px)}85%{transform:translate(-1px,1px)}}
 @keyframes shk2{0%,100%{transform:translate(0,0)}15%{transform:translate(-5px,2px)}
@@ -138,10 +138,10 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
   box-shadow:0 0 0 2px #10131A inset, 0 0 0 5px rgba(255,255,255,.22) inset,
              0 5px 0 -2px rgba(0,0,0,.4);
 }
-.tile.pop{animation:pop 200ms cubic-bezier(.3,1.5,.5,1)}
+.tile.pop{animation:pop 120ms cubic-bezier(.3,1.5,.5,1)}
 @keyframes pop{from{transform:var(--tf) scale(.55);opacity:0}to{opacity:1}}
 .tile.dead{opacity:0;transform:var(--tf) scale(1.5)}
-.tile.roll{animation:roll 300ms cubic-bezier(.25,.9,.3,1)}
+.tile.roll{animation:roll 170ms cubic-bezier(.25,.9,.3,1)}
 @keyframes roll{from{transform:var(--tf) translate(var(--rx,0),var(--ry,0)) rotate(-25deg);opacity:0}
   to{opacity:1}}
 
@@ -196,16 +196,27 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
 
 /* ---------- combo effects ---------- */
 .spark{position:absolute;border-radius:2px;pointer-events:none;
-  animation:spark 560ms cubic-bezier(.15,.75,.35,1) forwards}
+  animation:spark 480ms cubic-bezier(.15,.75,.35,1) forwards}
 @keyframes spark{
   0%  {transform:translate(var(--x),var(--y)) scale(1);opacity:1}
   100%{transform:translate(calc(var(--x) + var(--dx)),calc(var(--y) + var(--dy)))
        scale(.15) rotate(var(--rot));opacity:0}
 }
+.shock{position:absolute;pointer-events:none;border-radius:50%;
+  border:3px solid rgba(255,255,255,.85);animation:shock 420ms ease-out forwards}
+@keyframes shock{
+  0%{transform:translate(-50%,-50%) scale(.15);opacity:.95;border-width:5px}
+  100%{transform:translate(-50%,-50%) scale(1);opacity:0;border-width:1px}}
+.bigflash{position:fixed;inset:0;pointer-events:none;z-index:45;
+  background:radial-gradient(circle at 50% 45%, rgba(255,240,200,.55), rgba(255,240,200,0) 62%);
+  animation:bigflash 320ms ease-out forwards}
+@keyframes bigflash{to{opacity:0}}
+.scorebox .val.kick{animation:kick 320ms cubic-bezier(.2,1.6,.4,1)}
+@keyframes kick{0%{transform:scale(1)}35%{transform:scale(1.34);color:var(--hi)}100%{transform:scale(1)}}
 .gain{position:absolute;pointer-events:none;z-index:5;
   font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:19px;
   color:#F4D58A;text-shadow:0 2px 0 rgba(0,0,0,.55);white-space:nowrap;
-  animation:gain 780ms cubic-bezier(.2,1.1,.4,1) forwards}
+  animation:gain 640ms cubic-bezier(.2,1.1,.4,1) forwards}
 @keyframes gain{
   0%  {transform:translate(-50%,0) scale(.6);opacity:0}
   22% {transform:translate(-50%,-10px) scale(1.08);opacity:1}
@@ -219,7 +230,7 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
 /* ---------- toast ---------- */
 #toast{position:fixed;left:50%;top:34%;transform:translate(-50%,-50%);z-index:50;
   pointer-events:none;text-align:center}
-.chain{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:38px;
+.chain{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:46px;
   color:var(--ochre);letter-spacing:-.03em;
   text-shadow:0 3px 0 #8A6A17, 0 8px 22px rgba(0,0,0,.35);
   animation:rise 620ms cubic-bezier(.2,1.4,.4,1) forwards}
@@ -271,7 +282,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 <body>
 
 <header>
-  <div class="wordmark">EĞİM<small>SÜRÜM 11</small></div>
+  <div class="wordmark">EĞİM<small>SÜRÜM 12</small></div>
   <div class="scores">
     <div class="scorebox best"><div class="lbl">EN İYİ</div><div class="val" id="best">0</div></div>
     <div class="scorebox"><div class="lbl">SKOR</div><div class="val" id="score">0</div></div>
@@ -744,6 +755,11 @@ function setDir(){
 function bump(n){
   score += n;
   scoreEl.textContent = score.toLocaleString("tr-TR");
+  if(n > 40){
+    scoreEl.classList.remove("kick");
+    void scoreEl.offsetWidth;
+    scoreEl.classList.add("kick");
+  }
   if(score>best){
     best = score;
     bestEl.textContent = best.toLocaleString("tr-TR");
@@ -794,7 +810,7 @@ function setTheme(i, announce){
 
 // shards fly out of every tile that just went
 function sparks(cells){
-  const budget = Math.min(cells.length * (LEAN ? 1 : 2), LEAN ? 16 : 44);
+  const budget = Math.min(cells.length * (LEAN ? 2 : 3), LEAN ? 30 : 60);
   for(let i=0;i<budget;i++){
     const [r,c,col] = cells[i % cells.length];
     const a = Math.random() * Math.PI * 2;
@@ -808,11 +824,28 @@ function sparks(cells){
       `--dx:${(Math.cos(a)*d).toFixed(1)}px;--dy:${(Math.sin(a)*d - CELL*0.5).toFixed(1)}px;` +
       `--rot:${((Math.random()*2-1)*220).toFixed(0)}deg`;
     boardEl.appendChild(e);
-    setTimeout(()=>e.remove(), 600);
+    setTimeout(()=>e.remove(), 520);
   }
 }
 
 // the points you just earned, where you earned them
+function shockAt(cells, chain){
+  let sr=0, sc=0; cells.forEach(([r,c])=>{ sr+=r; sc+=c; });
+  const size = CELL * (3 + chain * 1.6);
+  const e = document.createElement("div");
+  e.className = "shock";
+  e.style.cssText = `left:${(sc/cells.length)*CELL + CELL/2}px;top:${(sr/cells.length)*CELL + CELL/2}px;`
+                  + `width:${size}px;height:${size}px;margin:0`;
+  boardEl.appendChild(e);
+  setTimeout(()=>e.remove(), 440);
+  if(chain >= 3){
+    const f = document.createElement("div");
+    f.className = "bigflash";
+    document.body.appendChild(f);
+    setTimeout(()=>f.remove(), 340);
+  }
+}
+
 function gainAt(cells, amount){
   let sr=0, sc=0;
   cells.forEach(([r,c])=>{ sr+=r; sc+=c; });
@@ -820,10 +853,11 @@ function gainAt(cells, amount){
   const e = document.createElement("div");
   e.className = "gain";
   e.textContent = "+" + amount.toLocaleString("tr-TR");
+  e.style.fontSize = Math.min(44, 19 + amount/120) + "px";
   e.style.left = (boardEl.offsetLeft + c*CELL + CELL/2) + "px";
   e.style.top  = (boardEl.offsetTop  + r*CELL) + "px";
   trayEl.appendChild(e);
-  setTimeout(()=>e.remove(), 820);
+  setTimeout(()=>e.remove(), 680);
 }
 
 function flashLines(rows, cols){
@@ -855,7 +889,7 @@ async function resolve(){
     SFX.clear(chain);
     shake(chain);
     buzz(chain>1 ? [0,20,45,20] : 16);
-    bump(kill.size * 10 * Math.pow(2, chain-1));
+    bump(kill.size * 25 * Math.pow(2, chain-1));
 
     let anchorsFreed = 0;
     const gone = [];
@@ -870,15 +904,15 @@ async function resolve(){
         board[r][c] = null;
       }
     });
-    const gain = kill.size * 10 * Math.pow(2, chain-1) + anchorsFreed * 150 * Math.pow(2, chain-1);
-    if(gone.length && !REDUCED) sparks(gone);
+    const gain = kill.size * 25 * Math.pow(2, chain-1) + anchorsFreed * 300 * Math.pow(2, chain-1);
+    if(gone.length && !REDUCED){ sparks(gone); shockAt(gone, chain); }
     if(gone.length) gainAt(gone, gain);
     if(anchorsFreed){
-      bump(anchorsFreed * 150 * Math.pow(2, chain-1));
+      bump(anchorsFreed * 300 * Math.pow(2, chain-1));
       tone(110, 0.34, {type:"sawtooth", gain:0.15, to:70});
       tone(660, 0.30, {type:"triangle", gain:0.13, delay:0.05});
     }
-    await sleep(210);
+    await sleep(95);
     renderBoard(true);
 
     // tip the tray: everything slides, and loose tiles roll in from the high side
@@ -893,7 +927,7 @@ async function resolve(){
        step let a chain feed itself: more tiles -> more lines -> more tiles, and
        the board could churn for many seconds with input locked. */
     const k = chain <= 2
-      ? (rows.length + cols.length) * Math.min(5, 2 + Math.floor(clears/12))
+      ? (rows.length + cols.length) * Math.min(6, 3 + Math.floor(clears/10))
       : 0;
     if(k){
       const anchorsIn = seedFrom(dir, k);
@@ -903,9 +937,9 @@ async function resolve(){
     renderBoard(true);
     dirIdx = (dirIdx+1) % 4;
     setDir();
-    await sleep(230);
+    await sleep(115);
     trayEl.classList.remove("t-"+dir);
-    await sleep(140);
+    await sleep(40);
   }
 }
 
@@ -925,7 +959,7 @@ async function place(i, r0, c0){
   if(pending.rows.length || pending.cols.length){
     busy = true;
     try{
-      await sleep(90);
+      await sleep(25);
       await resolve();
     } finally {
       busy = false;                  // input comes back even if resolve throws
@@ -1261,7 +1295,8 @@ played = parseInt(store.get("egim.played") || "0", 10) || 0;
 bestEl.textContent = best.toLocaleString("tr-TR");
 
 start();
-if(!store.get("egim.seen")) showHelp();
+// let the board be on screen for a moment before the rules cover it
+if(!store.get("egim.seen")) setTimeout(showHelp, 1400);
 })();
 </script>
 </body>
