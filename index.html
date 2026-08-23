@@ -33,6 +33,7 @@ body.t0{--plaster:#D6D8CE;--plaster-dk:#BEC1B5;--ink:#14161A;--hi:#8A6A17}
 body.t1{--plaster:#E2CFBC;--plaster-dk:#C8AE96;--ink:#2A1D14;--hi:#8C4A1E}
 body.t2{--plaster:#C7D1D9;--plaster-dk:#A6B4C0;--ink:#131A21;--hi:#1F5A78}
 body.t3{--plaster:#262C34;--plaster-dk:#171B21;--ink:#E6E8E3;--hi:#D9A02B}
+body.t4{--plaster:#3E3752;--plaster-dk:#2A2439;--ink:#EAE5F2;--hi:#E0A46A}
 body{transition:background 1400ms ease}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -183,6 +184,13 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
 #drag{position:fixed;left:0;top:0;pointer-events:none;z-index:60;
   will-change:transform;transform:translate3d(0,0,0)}
 #drag .pc i{box-shadow:0 2px 0 rgba(0,0,0,.3) inset, 0 6px 10px -3px rgba(0,0,0,.45)}
+
+/* ---------- tile collections: one alpha motif works over every colour ---------- */
+body.s1 .tile:not(.anchor), body.s1 .pc i{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg%3E %3Crect x='36' y='16' width='28' height='58' rx='14' fill='%23fff' fill-opacity='.30'/%3E %3Crect x='16' y='34' width='22' height='14' rx='7' fill='%23fff' fill-opacity='.30'/%3E %3Crect x='16' y='34' width='14' height='30' rx='7' fill='%23fff' fill-opacity='.30'/%3E %3Crect x='62' y='44' width='22' height='13' rx='6.5' fill='%23fff' fill-opacity='.24'/%3E %3Crect x='70' y='44' width='14' height='26' rx='7' fill='%23fff' fill-opacity='.24'/%3E %3Cg fill='%23000' fill-opacity='.30'%3E %3Crect x='48' y='26' width='3' height='9' rx='1.5'/%3E%3Crect x='48' y='44' width='3' height='9' rx='1.5'/%3E %3Crect x='48' y='60' width='3' height='9' rx='1.5'/%3E%3C/g%3E %3Crect x='22' y='70' width='56' height='9' rx='3' fill='%23000' fill-opacity='.42'/%3E %3Cpath d='M27 79 h46 l-6 19 h-34 z' fill='%23000' fill-opacity='.50'/%3E %3C/g%3E%3C/svg%3E");background-size:100% 100%}
+body.s2 .tile:not(.anchor), body.s2 .pc i{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg%3E %3Cpath d='M14 34 L27 6 L44 30 Z' fill='%23000' fill-opacity='.42'/%3E %3Cpath d='M86 34 L73 6 L56 30 Z' fill='%23000' fill-opacity='.42'/%3E %3Cpath d='M22 30 L28 16 L36 29 Z' fill='%23fff' fill-opacity='.34'/%3E %3Cpath d='M78 30 L72 16 L64 29 Z' fill='%23fff' fill-opacity='.34'/%3E %3Cellipse cx='36' cy='53' rx='7' ry='9' fill='%23000' fill-opacity='.62'/%3E %3Cellipse cx='64' cy='53' rx='7' ry='9' fill='%23000' fill-opacity='.62'/%3E %3Ccircle cx='38.5' cy='49' r='2.4' fill='%23fff' fill-opacity='.85'/%3E %3Ccircle cx='66.5' cy='49' r='2.4' fill='%23fff' fill-opacity='.85'/%3E %3Cpath d='M44 68 h12 l-6 7 z' fill='%23000' fill-opacity='.55'/%3E %3Cg stroke='%23000' stroke-opacity='.28' stroke-width='2.4' stroke-linecap='round'%3E %3Cpath d='M8 62 h14'/%3E%3Cpath d='M8 71 h14'/%3E%3Cpath d='M92 62 h-14'/%3E%3Cpath d='M92 71 h-14'/%3E%3C/g%3E %3C/g%3E%3C/svg%3E");background-size:100% 100%}
+body.s3 .tile:not(.anchor), body.s3 .pc i{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg%3E %3Crect x='42' y='0' width='16' height='100' fill='%23fff' fill-opacity='.48'/%3E %3Crect x='0' y='44' width='100' height='16' fill='%23fff' fill-opacity='.48'/%3E %3Crect x='42' y='0' width='5' height='100' fill='%23000' fill-opacity='.10'/%3E %3Crect x='0' y='44' width='100' height='5' fill='%23000' fill-opacity='.10'/%3E %3Cpath d='M50 52 C 34 40, 22 24, 34 20 C 44 17, 49 36, 50 52 Z' fill='%23fff' fill-opacity='.72'/%3E %3Cpath d='M50 52 C 66 40, 78 24, 66 20 C 56 17, 51 36, 50 52 Z' fill='%23fff' fill-opacity='.72'/%3E %3Ccircle cx='50' cy='50' r='8' fill='%23fff' fill-opacity='.85'/%3E %3Ccircle cx='50' cy='50' r='3.4' fill='%23000' fill-opacity='.22'/%3E %3C/g%3E%3C/svg%3E");background-size:100% 100%}
+body.s4 .tile:not(.anchor), body.s4 .pc i{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg%3E %3Crect x='2' y='16' width='24' height='54' rx='12' fill='%23000' fill-opacity='.40'/%3E %3Crect x='74' y='16' width='24' height='54' rx='12' fill='%23000' fill-opacity='.40'/%3E %3Ccircle cx='37' cy='44' r='6.5' fill='%23000' fill-opacity='.62'/%3E %3Ccircle cx='63' cy='44' r='6.5' fill='%23000' fill-opacity='.62'/%3E %3Ccircle cx='39' cy='41' r='2.2' fill='%23fff' fill-opacity='.85'/%3E %3Ccircle cx='65' cy='41' r='2.2' fill='%23fff' fill-opacity='.85'/%3E %3Cellipse cx='50' cy='72' rx='21' ry='15' fill='%23fff' fill-opacity='.34'/%3E %3Cellipse cx='50' cy='63' rx='9' ry='7' fill='%23000' fill-opacity='.62'/%3E %3Cpath d='M50 70 v6 M50 76 q-7 6 -12 0 M50 76 q7 6 12 0' stroke='%23000' stroke-opacity='.45' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E %3C/g%3E%3C/svg%3E");background-size:100% 100%}
+body:not(.s0) .tile:not(.anchor)::after, body:not(.s0) .pc i::after{opacity:.4}
 
 /* ---------- combo effects ---------- */
 .spark{position:absolute;border-radius:2px;pointer-events:none;
@@ -742,15 +750,15 @@ function chainToast(n){
   toastEl.appendChild(d);
   setTimeout(()=>{ if(d.parentNode) d.remove(); }, 640);
 }
-const THEMES = ["KİREÇ","KİL","MERMER","KÖMÜR"];
+const THEMES = ["SERAMİK","KAKTÜS","KEDİ","HEDİYE","KÖPEK"];
 let theme = 0;
 function setTheme(i, announce){
   theme = i % THEMES.length;
-  document.body.className = "t" + theme;
+  document.body.className = "t" + theme + " s" + theme;
   if(!announce) return;
   const t = document.createElement("div");
   t.className = "themeToast";
-  t.textContent = "ZEMİN — " + THEMES[theme];
+  t.textContent = "KOLEKSİYON — " + THEMES[theme];
   document.body.appendChild(t);
   setTimeout(()=>t.remove(), 2100);
 }
@@ -956,6 +964,21 @@ function showGhost(shape, r0, c0){
   for(; fi<flashPool.length; fi++) flashPool[fi].style.display = "none";
 }
 
+/* How far the piece floats above the fingertip. Kept small on purpose: the
+   further the piece sits from your finger, the more you are aiming blind. */
+const lift = () => Math.round(CELL * 0.45);
+
+function dragOffset(shape){
+  const [h,w] = dims(shape);
+  return [ (w*CELL)/2, lift() + h*CELL ];
+}
+
+// Neighbours ordered by distance, so a near miss lands on the closest legal cell.
+const SNAP = [];
+for(let dr=-2; dr<=2; dr++) for(let dc=-2; dc<=2; dc++)
+  if(dr||dc) SNAP.push([dr, dc, dr*dr + dc*dc]);
+SNAP.sort((a,b)=>a[2]-b[2]);
+
 function targetCell(x, y, shape){
   const rect = boardEl.getBoundingClientRect();
   const [h,w] = dims(shape);
@@ -981,8 +1004,6 @@ function flushDrag(){
   rafId = 0;
   if(!drag || !pendingPt) return;
   const [x,y] = pendingPt;
-  const [ox,oy] = dragOffset(drag.p.shape);
-  dragEl.style.transform = `translate(${x-ox}px, ${y-oy}px)`;
   const [r,c] = targetCell(x, y, drag.p.shape);
   if(r === drag.r && c === drag.c) return;       // nothing moved: touch no DOM
   drag.r = r; drag.c = c;
@@ -991,6 +1012,11 @@ function flushDrag(){
 
 function moveDrag(x, y){
   pendingPt = [x,y];
+  if(!drag) return;
+  // the piece itself is glued to the finger - a single cheap transform write,
+  // no waiting for the next frame. Only the ghost work is deferred.
+  const [ox,oy] = dragOffset(drag.p.shape);
+  dragEl.style.transform = `translate3d(${x-ox}px, ${y-oy}px, 0)`;
   if(!rafId) rafId = requestAnimationFrame(flushDrag);
 }
 
