@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#D6D8CE">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Eğim">
+<meta name="format-detection" content="telephone=no">
+<title>EĞİM — prototip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --plaster:#D6D8CE;
+  --plaster-dk:#BEC1B5;
+  --slate:#23262B;
+  --slate-lo:#191B1F;
+  --rim:#3A404A;
+  --rim-hi:#4E5666;
+  --ink:#14161A;
+  --ochre:#D9A02B;
+  --cell:34px;
+  --gap:3px;
+  --slide:260ms;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{margin:0;height:100%;overscroll-behavior:none;position:fixed;
+  width:100%;overflow:hidden}
+body{
+  background:
+    radial-gradient(120% 80% at 50% 0%, #E3E4DB 0%, var(--plaster) 55%, var(--plaster-dk) 100%);
+  color:var(--ink);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  display:flex;flex-direction:column;align-items:center;
+  padding:calc(10px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom));
+  gap:10px;
+  overflow:hidden;
+  touch-action:none;
+  justify-content:center;
+}
+/* landscape on a phone leaves no room for an 8x8 board */
+#rotate{position:fixed;inset:0;z-index:95;display:none;place-items:center;
+  background:var(--plaster);padding:30px;text-align:center}
+#rotate p{font-size:12px;letter-spacing:.1em;line-height:1.7;opacity:.65;max-width:260px}
+@media (orientation:landscape) and (max-height:520px){
+  #rotate{display:grid}
+}
+
+/* ---------- header ---------- */
+header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.wordmark{
+  font-family:"Bricolage Grotesque",system-ui,sans-serif;
+  font-weight:800;font-size:26px;letter-spacing:-.02em;line-height:.9;
+  font-variation-settings:"wdth" 75;
+}
+.wordmark small{display:block;font-family:"IBM Plex Mono",monospace;font-weight:400;
+  font-size:9px;letter-spacing:.22em;opacity:.5;margin-top:4px}
+.scores{display:flex;gap:18px;text-align:right}
+.scorebox .lbl{font-size:8.5px;letter-spacing:.18em;opacity:.5}
+.scorebox .val{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.scorebox.best .val{font-size:14px;opacity:.55}
+
+/* ---------- tray ---------- */
+.stage{position:relative;perspective:900px}
+.stage.shake1{animation:shk1 170ms ease-out}
+.stage.shake2{animation:shk2 260ms ease-out}
+.stage.shake3{animation:shk3 380ms ease-out}
+@keyframes shk1{0%,100%{transform:translate(0,0)}30%{transform:translate(-2px,1px)}
+  60%{transform:translate(2px,-1px)}85%{transform:translate(-1px,1px)}}
+@keyframes shk2{0%,100%{transform:translate(0,0)}15%{transform:translate(-5px,2px)}
+  35%{transform:translate(5px,-3px)}55%{transform:translate(-4px,-2px)}
+  75%{transform:translate(3px,2px)}90%{transform:translate(-1px,0)}}
+@keyframes shk3{0%,100%{transform:translate(0,0)}10%{transform:translate(-8px,4px)}
+  25%{transform:translate(9px,-5px)}40%{transform:translate(-7px,-4px)}
+  55%{transform:translate(6px,5px)}70%{transform:translate(-4px,-2px)}
+  85%{transform:translate(2px,1px)}}
+.tray{
+  position:relative;
+  padding:13px;
+  border-radius:16px;
+  background:linear-gradient(160deg,var(--rim-hi),var(--rim) 40%,#2B3039);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.35) inset,
+    0 18px 34px -14px rgba(20,22,26,.65),
+    0 3px 0 #9DA095;
+  transition:transform var(--slide) cubic-bezier(.34,1.3,.5,1), box-shadow var(--slide);
+  transform-style:preserve-3d;
+}
+.tray.t-left {transform:rotate(-2.6deg) translateX(-4px)}
+.tray.t-right{transform:rotate(2.6deg) translateX(4px)}
+.tray.t-down {transform:rotateX(9deg) translateY(5px)}
+.tray.t-up   {transform:rotateX(-9deg) translateY(-5px)}
+
+.board{
+  position:relative;
+  background:var(--slate-lo);
+  border-radius:6px;
+  box-shadow:0 3px 9px rgba(0,0,0,.55) inset;
+  overflow:hidden;
+}
+.hole{position:absolute;border-radius:4px;background:var(--slate);
+  box-shadow:0 1px 2px rgba(0,0,0,.4) inset}
+
+/* tiles */
+.tile{
+  position:absolute;border-radius:5px;
+  transition:transform var(--slide) cubic-bezier(.3,.9,.3,1), opacity 170ms, filter 170ms;
+  will-change:transform;
+  box-shadow:
+    0 2px 0 rgba(0,0,0,.30) inset,
+    0 5px 0 -2px rgba(0,0,0,.22);
+}
+.tile::after{content:"";position:absolute;inset:2px 2px auto 2px;height:34%;
+  border-radius:4px 4px 8px 8px;background:linear-gradient(rgba(255,255,255,.34),rgba(255,255,255,0))}
+.tile.anchor{
+  background-image:radial-gradient(circle at 50% 50%,
+    rgba(0,0,0,.34) 0 16%, rgba(255,255,255,.16) 18% 26%, transparent 28%);
+  box-shadow:0 0 0 2px rgba(0,0,0,.40) inset, 0 5px 0 -2px rgba(0,0,0,.30);
+}
+.tile.anchor::after{display:none}          /* matte: anchors are not glazed */
+.tile.pop{animation:pop 200ms cubic-bezier(.3,1.5,.5,1)}
+@keyframes pop{from{transform:var(--tf) scale(.55);opacity:0}to{opacity:1}}
+.tile.dead{opacity:0;filter:brightness(2.4);transform:var(--tf) scale(1.5)}
+.tile.roll{animation:roll 300ms cubic-bezier(.25,.9,.3,1)}
+@keyframes roll{from{transform:var(--tf) translate(var(--rx,0),var(--ry,0)) rotate(-25deg);opacity:0}
+  to{opacity:1}}
+
+/* preview */
+.ghost{position:absolute;border-radius:5px;border:2px dashed rgba(255,255,255,.5);
+  background:rgba(255,255,255,.09);pointer-events:none}
+.ghost.bad{border:2px solid #E2604F;background:rgba(226,96,80,.30);
+  box-shadow:0 0 14px rgba(226,96,80,.5)}
+/* the tiles actually in the way get called out, not just the piece */
+.blocker{position:absolute;border-radius:5px;pointer-events:none;
+  box-shadow:0 0 0 3px #FF6B57 inset, 0 0 16px rgba(255,107,87,.75);
+  animation:blk 460ms ease-in-out infinite alternate}
+@keyframes blk{from{opacity:.5}to{opacity:1}}
+.badflash{position:absolute;inset:0;pointer-events:none;background:rgba(226,96,80,.30);
+  animation:bfl 300ms ease-out forwards}
+@keyframes bfl{to{opacity:0}}
+#drag.bad{opacity:.6}
+#drag.bad .pc i{background:#8C4038 !important}
+#drag.bad .pc i::after{opacity:.25}
+.flash,.pflash{position:absolute;background:rgba(217,160,43,.16);pointer-events:none;
+  box-shadow:0 0 0 1px rgba(217,160,43,.5) inset}
+
+/* rim arrows */
+.arrow{position:absolute;color:#7A8494;font-size:13px;line-height:1;
+  transition:color 200ms,text-shadow 200ms,transform 200ms}
+.arrow.on{color:var(--ochre);text-shadow:0 0 10px rgba(217,160,43,.8);transform:scale(1.5)}
+.a-up{top:2px;left:50%;margin-left:-5px}
+.a-down{bottom:2px;left:50%;margin-left:-5px}
+.a-left{left:3px;top:50%;margin-top:-6px}
+.a-right{right:3px;top:50%;margin-top:-6px}
+
+/* ---------- next-tilt caption ---------- */
+.caption{display:flex;align-items:center;gap:8px;font-size:9.5px;letter-spacing:.2em;opacity:.65}
+.caption b{color:#8A6A17;font-weight:600}
+
+/* ---------- hand ---------- */
+.hand{display:flex;justify-content:center;align-items:flex-start;gap:10px;
+  width:100%;max-width:400px;min-height:104px;
+  padding:12px 8px;border-radius:14px;
+  background:linear-gradient(#00000010,#00000004);
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 0 0 1px rgba(20,22,26,.07) inset}
+.slot{flex:1;display:flex;align-items:center;justify-content:center;position:relative;
+  min-height:78px;touch-action:none;cursor:grab}
+.slot.used{opacity:.16}
+.slot.held{opacity:.2}
+.pc{position:relative}
+.pc i{position:absolute;border-radius:4px;display:block;
+  box-shadow:0 2px 0 rgba(0,0,0,.3) inset, 0 3px 0 -1px rgba(0,0,0,.2)}
+.pc i::after{content:"";position:absolute;inset:1px 1px auto 1px;height:34%;border-radius:3px;
+  background:linear-gradient(rgba(255,255,255,.34),rgba(255,255,255,0))}
+
+#drag{position:fixed;left:0;top:0;pointer-events:none;z-index:60;filter:drop-shadow(0 12px 12px rgba(0,0,0,.35))}
+
+/* ---------- toast ---------- */
+#toast{position:fixed;left:50%;top:34%;transform:translate(-50%,-50%);z-index:50;
+  pointer-events:none;text-align:center}
+.chain{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:38px;
+  color:var(--ochre);letter-spacing:-.03em;
+  text-shadow:0 3px 0 #8A6A17, 0 8px 22px rgba(0,0,0,.35);
+  animation:rise 620ms cubic-bezier(.2,1.4,.4,1) forwards}
+@keyframes rise{0%{transform:translateY(14px) scale(.6);opacity:0}
+  25%{transform:translateY(0) scale(1);opacity:1}
+  75%{opacity:1}100%{transform:translateY(-26px) scale(1);opacity:0}}
+
+/* ---------- overlay ---------- */
+#help{position:fixed;inset:0;z-index:80;display:none;place-items:center;padding:18px;
+  background:rgba(20,22,26,.78);backdrop-filter:blur(4px)}
+#help.show{display:grid}
+.rules{background:var(--plaster);border-radius:18px;padding:26px 24px;max-width:330px;
+  box-shadow:0 24px 50px -18px rgba(0,0,0,.7)}
+.rules h2{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:22px;
+  margin:0 0 16px;letter-spacing:-.02em}
+.rule{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start}
+.rule .n{flex:0 0 22px;height:22px;border-radius:6px;background:var(--ink);color:var(--plaster);
+  font-size:11px;font-weight:600;display:grid;place-items:center;margin-top:1px}
+.rule p{margin:0;font-size:11.5px;line-height:1.55;opacity:.8}
+.rule b{color:#8A6A17}
+.rules button{width:100%;margin-top:6px}
+#over{position:fixed;inset:0;z-index:70;display:none;place-items:center;
+  background:rgba(20,22,26,.72);backdrop-filter:blur(3px)}
+#over.show{display:grid}
+.card{background:var(--plaster);border-radius:18px;padding:28px 30px;text-align:center;
+  box-shadow:0 24px 50px -18px rgba(0,0,0,.7);max-width:290px}
+.card h2{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:24px;margin:0 0 4px;
+  letter-spacing:-.02em}
+.card p{font-size:10px;letter-spacing:.14em;opacity:.55;margin:0 0 18px}
+.card .big{font-size:44px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1;margin-bottom:22px}
+.footbar{display:flex;gap:6px;align-items:center}
+.ghostbtn{background:transparent;color:var(--ink);box-shadow:none;opacity:.45;
+  padding:6px 10px;font-size:9px;letter-spacing:.16em}
+button{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;font-weight:600;
+  background:var(--ink);color:var(--plaster);border:0;border-radius:9px;
+  padding:13px 22px;cursor:pointer;box-shadow:0 3px 0 #000;transition:transform 90ms}
+button:active{transform:translateY(2px);box-shadow:0 1px 0 #000}
+button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
+.reset{background:transparent;color:var(--ink);box-shadow:none;opacity:.45;padding:6px 10px;font-size:9px}
+
+@media (prefers-reduced-motion:reduce){
+  :root{--slide:90ms}
+  .stage.shake1,.stage.shake2,.stage.shake3{animation:none}
+  .tray{transition:none}.tray.t-left,.tray.t-right,.tray.t-down,.tray.t-up{transform:none}
+  .chain{animation-duration:300ms}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark">EĞİM<small>PROTOTİP 0.1</small></div>
+  <div class="scores">
+    <div class="scorebox best"><div class="lbl">EN İYİ</div><div class="val" id="best">0</div></div>
+    <div class="scorebox"><div class="lbl">SKOR</div><div class="val" id="score">0</div></div>
+  </div>
+</header>
+
+<div class="stage">
+  <div class="tray" id="tray">
+    <div class="board" id="board"></div>
+    <span class="arrow a-up" data-d="up">▲</span>
+    <span class="arrow a-down" data-d="down">▼</span>
+    <span class="arrow a-left" data-d="left">◀</span>
+    <span class="arrow a-right" data-d="right">▶</span>
+  </div>
+</div>
+
+<div class="caption">SIRADAKİ EĞİM <b id="dirname">AŞAĞI</b></div>
+
+<div class="hand" id="hand"></div>
+<div class="footbar">
+  <button class="ghostbtn" id="helpBtn">NASIL OYNANIR</button>
+  <button class="ghostbtn" id="mute">🔊 SES AÇIK</button>
+  <button class="reset" id="reset">YENİDEN BAŞLA</button>
+</div>
+
+<div id="rotate"><p>EĞİM DİKEY OYNANIR<br><br>Telefonu çevir.</p></div>
+<div id="drag"></div>
+<div id="toast"></div>
+
+<div id="help"><div class="rules">
+  <h2>Nasıl oynanır</h2>
+  <div class="rule"><div class="n">1</div><p>Alttaki parçaları tepsiye sürükle. Döndürme yok.</p></div>
+  <div class="rule"><div class="n">2</div><p>Bir satırı ya da sütunu tamamen doldur, temizlensin.</p></div>
+  <div class="rule"><div class="n">3</div><p>Her temizlemede <b>tepsi yan yatar</b> ve bütün taşlar o yöne kayar. Bir sonraki yön kenardaki sarı okta yazar — ona göre plan yap.</p></div>
+  <div class="rule"><div class="n">4</div><p>Tepsi yatınca <b>yüksek taraftan gri taşlar yuvarlanır</b>. Bedava değil yani.</p></div>
+  <div class="rule"><div class="n">5</div><p>Kayma yeni bir satır tamamlarsa <b>zincir</b> olur ve puan katlanır. Asıl iş burada.</p></div>
+  <div class="rule"><div class="n">6</div><p>Mat, ortası perçinli <b>çapa taşları</b> kaymaz — tepsi yatınca yerinde kalır, diğer taşlar onlara çarpıp yığılır. Temizlersen bol puan.</p></div>
+  <button id="helpClose">ANLADIM</button>
+</div></div>
+
+<div id="over"><div class="card">
+  <h2>Hamle kalmadı</h2>
+  <p>TEPSİ TIKANDI</p>
+  <div class="big" id="finalScore">0</div>
+  <p style="margin:-14px 0 18px" id="overSub">EN İYİ 0 · 1. OYUN</p>
+  <button id="again">TEKRAR DENE</button>
+</div></div>
+
+<script>
+(function(){
+"use strict";
+
+const N = 8;
+const COLORS = ["#C0574A","#D9A02B","#2F8C8C","#41609E","#7C9B4E"];
+const STONE  = "#6E7684";   // tiles that roll in from the raised edge
+const ANCHOR = "#4A515E";   // bolted down: does not slide when the tray tips
+const DIRS = ["down","left","up","right"];
+const DIRNAME = {down:"AŞAĞI", left:"SOLA", up:"YUKARI", right:"SAĞA"};
+
+// ---- shapes: no rotation in-game, so every rotation is its own piece ----
+const SHAPES = [
+ // --- tek kare ve çizgiler ---
+ {w:3,c:[[0,0]]},
+ {w:5,c:[[0,0],[0,1]]},                      {w:5,c:[[0,0],[1,0]]},
+ {w:5,c:[[0,0],[0,1],[0,2]]},                {w:5,c:[[0,0],[1,0],[2,0]]},
+ {w:3,c:[[0,0],[0,1],[0,2],[0,3]]},          {w:3,c:[[0,0],[1,0],[2,0],[3,0]]},
+ {w:1,c:[[0,0],[0,1],[0,2],[0,3],[0,4]]},    {w:1,c:[[0,0],[1,0],[2,0],[3,0],[4,0]]},
+ // --- dikdörtgenler ---
+ {w:4,c:[[0,0],[0,1],[1,0],[1,1]]},                                   // 2x2
+ {w:2,c:[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2]]},                       // 2x3
+ {w:2,c:[[0,0],[0,1],[1,0],[1,1],[2,0],[2,1]]},                       // 3x2
+ {w:1,c:[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]]},     // 3x3
+ // --- küçük L (3 kare), 4 dönüş ---
+ {w:3,c:[[0,0],[1,0],[1,1]]},  {w:3,c:[[0,0],[0,1],[1,0]]},
+ {w:3,c:[[0,0],[0,1],[1,1]]},  {w:3,c:[[0,1],[1,0],[1,1]]},
+ // --- T tetromino, 4 dönüş ---
+ {w:2,c:[[0,1],[1,0],[1,1],[1,2]]},  {w:2,c:[[0,0],[0,1],[0,2],[1,1]]},
+ {w:2,c:[[0,0],[1,0],[1,1],[2,0]]},  {w:2,c:[[0,1],[1,0],[1,1],[2,1]]},
+ // --- S ve Z tetromino, 4 dönüş ---
+ {w:2,c:[[0,1],[0,2],[1,0],[1,1]]},  {w:2,c:[[0,0],[0,1],[1,1],[1,2]]},
+ {w:2,c:[[0,0],[1,0],[1,1],[2,1]]},  {w:2,c:[[0,1],[1,0],[1,1],[2,0]]},
+ // --- J tetromino, 4 dönüş ---
+ {w:2,c:[[0,0],[1,0],[1,1],[1,2]]},  {w:2,c:[[0,0],[0,1],[1,0],[2,0]]},
+ {w:2,c:[[0,0],[0,1],[0,2],[1,2]]},  {w:2,c:[[0,1],[1,1],[2,0],[2,1]]},
+ // --- L tetromino, 4 dönüş ---
+ {w:2,c:[[0,2],[1,0],[1,1],[1,2]]},  {w:2,c:[[0,0],[1,0],[2,0],[2,1]]},
+ {w:2,c:[[0,0],[0,1],[0,2],[1,0]]},  {w:2,c:[[0,0],[0,1],[1,1],[2,1]]},
+ // --- büyük L / V pentomino, 4 dönüş ---
+ {w:1,c:[[0,0],[1,0],[2,0],[2,1],[2,2]]},  {w:1,c:[[0,0],[0,1],[0,2],[1,0],[2,0]]},
+ {w:1,c:[[0,0],[0,1],[0,2],[1,2],[2,2]]},  {w:1,c:[[0,2],[1,2],[2,0],[2,1],[2,2]]},
+ // --- artı ---
+ {w:1,c:[[0,1],[1,0],[1,1],[1,2],[2,1]]}
+];
+const BAG = [];
+SHAPES.forEach((s,i)=>{ for(let k=0;k<s.w;k++) BAG.push(i); });
+
+// ---- state ----
+let board, hand, score, best = 0, dirIdx, uid = 0, busy = false, over = false, clears = 0;
+let played = 0;
+
+/* Saves to localStorage when the file is opened normally or hosted.
+   Some sandboxed previews block it, so fall back to memory instead of crashing. */
+const store = (function(){
+  let ok = true; const mem = {};
+  try { localStorage.setItem("__probe","1"); localStorage.removeItem("__probe"); }
+  catch(e){ ok = false; }
+  return {
+    get(k){ try { return ok ? localStorage.getItem(k) : (k in mem ? mem[k] : null); }
+            catch(e){ return k in mem ? mem[k] : null; } },
+    set(k,v){ try { if(ok) localStorage.setItem(k,v); else mem[k]=v; }
+              catch(e){ mem[k]=v; } }
+  };
+})();
+const els = new Map();
+
+const boardEl  = document.getElementById("board");
+const trayEl   = document.getElementById("tray");
+const handEl   = document.getElementById("hand");
+const scoreEl  = document.getElementById("score");
+const bestEl   = document.getElementById("best");
+const dirNameEl= document.getElementById("dirname");
+const dragEl   = document.getElementById("drag");
+const toastEl  = document.getElementById("toast");
+const overEl   = document.getElementById("over");
+
+let CELL = 34, GAP = 3;
+
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+/* ======================= FEEL LAYER =======================
+   All sound is synthesised with Web Audio - no audio files,
+   so the game stays a single portable file. ================= */
+let AC = null, master = null, muted = false, noiseBuf = null;
+
+function audioInit(){
+  if(AC){ if(AC.state === "suspended") AC.resume(); return; }
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if(!Ctx) return;
+  try{
+    AC = new Ctx();
+    master = AC.createGain();
+    master.gain.value = 0.85;
+    master.connect(AC.destination);
+  }catch(e){ AC = null; }
+}
+function getNoise(){
+  if(noiseBuf) return noiseBuf;
+  const len = Math.floor(AC.sampleRate * 0.4);
+  noiseBuf = AC.createBuffer(1, len, AC.sampleRate);
+  const d = noiseBuf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i] = Math.random()*2 - 1;
+  return noiseBuf;
+}
+function tone(f, dur, o={}){
+  if(!AC || muted) return;
+  const t0 = AC.currentTime + (o.delay||0);
+  const osc = AC.createOscillator();
+  osc.type = o.type || "sine";
+  osc.frequency.setValueAtTime(f, t0);
+  if(o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t0+dur);
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(o.gain||0.2, t0+0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  osc.connect(g); g.connect(master);
+  osc.start(t0); osc.stop(t0+dur+0.03);
+}
+function noise(dur, o={}){
+  if(!AC || muted) return;
+  const t0 = AC.currentTime + (o.delay||0);
+  const src = AC.createBufferSource(); src.buffer = getNoise();
+  const flt = AC.createBiquadFilter();
+  flt.type = o.type || "bandpass";
+  flt.frequency.setValueAtTime(o.freq||2000, t0);
+  flt.Q.value = o.Q || 1;
+  if(o.sweepTo) flt.frequency.exponentialRampToValueAtTime(o.sweepTo, t0+dur);
+  const g = AC.createGain();
+  g.gain.setValueAtTime(o.gain||0.15, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  src.connect(flt); flt.connect(g); g.connect(master);
+  src.start(t0); src.stop(t0+dur+0.03);
+}
+
+// A-minor pentatonic: chains climb the scale instead of just getting louder
+const PENT = [220, 261.6, 293.7, 349.2, 392.0, 523.3, 587.3, 698.5, 784.0];
+
+const SFX = {
+  pick(){ noise(0.03, {freq:3200, Q:2.5, gain:0.09}); },
+  drop(){                                   // glazed tile meeting slate
+    tone(190, 0.09, {type:"sine", gain:0.26, to:115});
+    noise(0.05, {freq:2600, Q:1.4, gain:0.15});
+  },
+  bad(){ tone(95, 0.13, {type:"square", gain:0.09, to:62}); },
+  clear(chain){
+    const i = Math.min(PENT.length-1, chain-1);
+    tone(PENT[i],   0.32, {type:"triangle", gain:0.20});
+    tone(PENT[i]*2, 0.24, {type:"sine",     gain:0.09, delay:0.02});
+    noise(0.20, {freq:4500, Q:0.8, gain:0.07, sweepTo:9000});
+  },
+  tilt(){ noise(0.34, {type:"lowpass", freq:260, gain:0.17, sweepTo:900}); },
+  pebbles(n){                               // loose tiles rolling in
+    for(let i=0;i<Math.min(n,7);i++)
+      noise(0.03, {freq:1400+Math.random()*2600, Q:3, gain:0.08,
+                   delay:0.05 + Math.random()*0.20});
+  },
+  anchorDrop(){                             // something heavy settling in
+    tone(72, 0.30, {type:"square", gain:0.13, to:48, delay:0.12});
+    noise(0.14, {freq:420, Q:1.2, gain:0.14, delay:0.12});
+  },
+  over(){ [392,311,233].forEach((f,i)=>
+    tone(f, 0.45, {type:"triangle", gain:0.17, delay:i*0.14})); }
+};
+
+function buzz(pattern){
+  if(muted || !navigator.vibrate) return;
+  try{ navigator.vibrate(pattern); }catch(e){}
+}
+const REDUCED = window.matchMedia &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function shake(level){
+  if(REDUCED) return;
+  const st = document.querySelector(".stage");
+  const cls = "shake" + Math.min(3, level);
+  st.classList.remove("shake1","shake2","shake3");
+  void st.offsetWidth;                      // restart the animation
+  st.classList.add(cls);
+  setTimeout(()=>st.classList.remove(cls), 420);
+}
+document.addEventListener("pointerdown", audioInit);
+/* ===================== END FEEL LAYER ===================== */
+const norm  = s => { // normalise shape to 0-based bounds
+  const minr = Math.min(...s.map(a=>a[0])), minc = Math.min(...s.map(a=>a[1]));
+  return s.map(([r,c])=>[r-minr,c-minc]);
+};
+const dims = s => [Math.max(...s.map(a=>a[0]))+1, Math.max(...s.map(a=>a[1]))+1];
+
+// ---- sizing ----
+function sizeUp(){
+  // measure what the rest of the UI actually takes, rather than assuming a number
+  const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  const chromeH =
+      (document.querySelector("header").offsetHeight || 52)
+    + (document.querySelector(".caption").offsetHeight || 14)
+    + (handEl.offsetHeight || 104)
+    + (document.querySelector(".footbar").offsetHeight || 28)
+    + 74;                                   // gaps, tray padding, safe areas
+  const byH = vh - chromeH;
+  const byW = Math.min(window.innerWidth - 24, 430);
+  CELL = Math.max(24, Math.floor((Math.min(byW, byH) - 26) / N));
+  GAP  = Math.max(2, Math.round(CELL * 0.09));
+  document.documentElement.style.setProperty("--cell", CELL+"px");
+  const px = N*CELL;
+  boardEl.style.width = px+"px";
+  boardEl.style.height = px+"px";
+  drawHoles();
+  renderBoard(true);
+  if(hand) renderHand();
+}
+
+function drawHoles(){
+  boardEl.querySelectorAll(".hole").forEach(e=>e.remove());
+  const frag = document.createDocumentFragment();
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    const h = document.createElement("div");
+    h.className = "hole";
+    h.style.cssText = `left:${c*CELL+GAP/2}px;top:${r*CELL+GAP/2}px;width:${CELL-GAP}px;height:${CELL-GAP}px`;
+    frag.appendChild(h);
+  }
+  boardEl.insertBefore(frag, boardEl.firstChild);
+}
+
+// ---- board helpers ----
+function newBoard(){ return Array.from({length:N},()=>Array(N).fill(null)); }
+
+function renderBoard(instant){
+  const seen = new Set();
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    const b = board[r][c];
+    if(!b) continue;
+    seen.add(b.id);
+    let el = els.get(b.id);
+    const tf = `translate(${c*CELL+GAP/2}px,${r*CELL+GAP/2}px)`;
+    if(!el){
+      el = document.createElement("div");
+      el.className = "tile" + (b.anchor ? " anchor" : "");
+      el.style.background = b.col;
+      boardEl.appendChild(el);
+      els.set(b.id, el);
+      el.style.setProperty("--tf", tf);
+      el.style.transform = tf;
+      el.style.width = (CELL-GAP)+"px";
+      el.style.height = (CELL-GAP)+"px";
+      if(b.roll){
+        const off = CELL*2.2;
+        const o = {down:[0,-off], up:[0,off], left:[off,0], right:[-off,0]}[b.roll];
+        el.style.setProperty("--rx", o[0]+"px");
+        el.style.setProperty("--ry", o[1]+"px");
+        el.classList.add("roll");
+        delete b.roll;
+      } else if(!instant) el.classList.add("pop");
+    } else {
+      el.style.width = (CELL-GAP)+"px";
+      el.style.height = (CELL-GAP)+"px";
+      el.style.setProperty("--tf", tf);
+      el.style.transform = tf;
+    }
+  }
+  els.forEach((el,id)=>{ if(!seen.has(id)){ el.remove(); els.delete(id); } });
+}
+
+function fullLines(bd){
+  const rows=[], cols=[];
+  for(let r=0;r<N;r++){ if(bd[r].every(Boolean)) rows.push(r); }
+  for(let c=0;c<N;c++){ let ok=true; for(let r=0;r<N;r++) if(!bd[r][c]){ok=false;break;} if(ok) cols.push(c); }
+  return {rows, cols};
+}
+
+function linesFor(dir){
+  const out=[];
+  if(dir==="down"||dir==="up"){
+    for(let c=0;c<N;c++){
+      const l=[]; for(let r=0;r<N;r++) l.push([r,c]);
+      out.push(dir==="up" ? l : l.reverse());   // index 0 = wall side
+    }
+  } else {
+    for(let r=0;r<N;r++){
+      const l=[]; for(let c=0;c<N;c++) l.push([r,c]);
+      out.push(dir==="left" ? l : l.reverse());
+    }
+  }
+  return out;
+}
+
+function gravity(dir){
+  for(const line of linesFor(dir)){        // index 0 = the low wall
+    let start = 0;
+    for(let i=0; i<=line.length; i++){
+      const cell = i<line.length ? board[line[i][0]][line[i][1]] : null;
+      const isAnchor = !!(cell && cell.anchor);
+      if(i === line.length || isAnchor){    // anchor behaves like a wall
+        const seg  = line.slice(start, i);
+        const vals = seg.map(([r,c])=>board[r][c]).filter(Boolean);
+        seg.forEach(([r,c],j)=>{ board[r][c] = vals[j] || null; });
+        start = i + 1;
+      }
+    }
+  }
+}
+
+// as the tray tips, loose tiles roll in from the RAISED edge (opposite the tilt)
+function seedFrom(dir, k){
+  const spots = [];
+  for(const line of linesFor(dir)){          // index 0 = low wall, end = raised edge
+    for(let i=line.length-1; i>=Math.max(0,line.length-3); i--){
+      const [r,c] = line[i];
+      if(!board[r][c]) spots.push([r,c]);
+    }
+  }
+  for(let i=spots.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [spots[i],spots[j]]=[spots[j],spots[i]]; }
+  let anchors = 0;
+  spots.slice(0,k).forEach(([r,c])=>{
+    // anchors only start appearing once the player knows the basic loop
+    const anchor = clears >= 6 && Math.random() < 0.10;
+    board[r][c] = {id:++uid, col:anchor?ANCHOR:STONE, roll:dir, anchor};
+    if(anchor) anchors++;
+  });
+  return anchors;
+}
+
+function canPlaceAt(shape, r0, c0){
+  for(const [dr,dc] of shape){
+    const r=r0+dr, c=c0+dc;
+    if(r<0||c<0||r>=N||c>=N||board[r][c]) return false;
+  }
+  return true;
+}
+function canPlaceAnywhere(shape){
+  const [h,w] = dims(shape);
+  for(let r=0;r<=N-h;r++) for(let c=0;c<=N-w;c++) if(canPlaceAt(shape,r,c)) return true;
+  return false;
+}
+
+// ---- hand ----
+function randShape(){ return norm(SHAPES[BAG[(Math.random()*BAG.length)|0]].c); }
+
+function placements(shape){
+  const [h,w] = dims(shape); const out = [];
+  for(let r=0;r<=N-h;r++) for(let c=0;c<=N-w;c++)
+    if(canPlaceAt(shape,r,c)) out.push([r,c]);
+  return out;
+}
+function completesALine(shape, spots){
+  for(const [r0,c0] of spots){
+    const sim = board.map(row=>row.slice());
+    for(const [dr,dc] of shape) sim[r0+dr][c0+dc] = 1;
+    const f = fullLines(sim);
+    if(f.rows.length || f.cols.length) return true;
+  }
+  return false;
+}
+
+/* The dealer reads the board. Every piece it hands you is guaranteed to fit
+   somewhere, and the fuller the tray gets the more it leans toward pieces that
+   fit well - but never so far that it plays the game for you. Tuned to 0.4 by
+   simulation: below that you get dealt junk, above it the game stops ending. */
+const ASSIST_K = 0.4;
+
+function pickPiece(assist){
+  const cands = [];
+  for(let i=0;i<12;i++){
+    const sh = randShape();
+    const sp = placements(sh);
+    if(!sp.length) continue;                       // never deal a dead piece
+    cands.push({ sh, score: (completesALine(sh,sp) ? 40 : 0) + sp.length });
+  }
+  if(!cands.length) return [[0,0]];                // tray nearly full: give a single square
+  cands.sort((a,b)=>b.score - a.score);
+  const span = Math.max(1, Math.round(cands.length * (1 - assist)));
+  return cands[(Math.random()*span)|0].sh;
+}
+
+function dealHand(){
+  let filled = 0;
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(board[r][c]) filled++;
+  const assist = Math.min(1, (filled/(N*N)) * ASSIST_K);
+  hand = [0,1,2].map(()=>({ shape: pickPiece(assist),
+                            col: COLORS[(Math.random()*COLORS.length)|0] }));
+  renderHand();
+}
+function pieceNode(p, cell){
+  const [h,w] = dims(p.shape);
+  const g = Math.max(2, Math.round(cell*0.09));
+  const box = document.createElement("div");
+  box.className = "pc";
+  box.style.width = (w*cell)+"px";
+  box.style.height = (h*cell)+"px";
+  for(const [r,c] of p.shape){
+    const i = document.createElement("i");
+    i.style.cssText = `left:${c*cell+g/2}px;top:${r*cell+g/2}px;width:${cell-g}px;height:${cell-g}px;background:${p.col}`;
+    box.appendChild(i);
+  }
+  return box;
+}
+function renderHand(){
+  handEl.innerHTML = "";
+  hand.forEach((p,i)=>{
+    const slot = document.createElement("div");
+    slot.className = "slot" + (p ? "" : " used");
+    slot.dataset.i = i;
+    if(p){
+      const [h,w] = dims(p.shape);
+      const mini = Math.min(20, Math.floor(74/Math.max(h,w)), Math.floor((handEl.clientWidth/3-18)/w) || 20);
+      slot.appendChild(pieceNode(p, Math.max(11, mini)));
+    }
+    handEl.appendChild(slot);
+  });
+}
+
+// ---- ui bits ----
+function setDir(){
+  document.querySelectorAll(".arrow").forEach(a=>a.classList.toggle("on", a.dataset.d===DIRS[dirIdx]));
+  dirNameEl.textContent = DIRNAME[DIRS[dirIdx]];
+}
+function bump(n){
+  score += n;
+  scoreEl.textContent = score.toLocaleString("tr-TR");
+  if(score>best){
+    best = score;
+    bestEl.textContent = best.toLocaleString("tr-TR");
+    store.set("egim.best", String(best));
+  }
+}
+function chainToast(n){
+  toastEl.innerHTML = "";
+  const d = document.createElement("div");
+  d.className = "chain";
+  d.textContent = n===1 ? "TEMİZ" : "ZİNCİR ×"+n;
+  toastEl.appendChild(d);
+  setTimeout(()=>{ if(d.parentNode) d.remove(); }, 640);
+}
+function flashLines(rows, cols){
+  const f = document.createDocumentFragment();
+  const mk = (l,t,w,h)=>{ const e=document.createElement("div"); e.className="flash";
+    e.style.cssText=`left:${l}px;top:${t}px;width:${w}px;height:${h}px`; f.appendChild(e); return e; };
+  const made=[];
+  rows.forEach(r=>made.push(mk(0, r*CELL, N*CELL, CELL)));
+  cols.forEach(c=>made.push(mk(c*CELL, 0, CELL, N*CELL)));
+  boardEl.appendChild(f);
+  setTimeout(()=>made.forEach(e=>e.remove()), 240);
+}
+
+// ---- main resolve loop ----
+async function resolve(){
+  let chain = 0;
+  while(true){
+    const {rows, cols} = fullLines(board);
+    if(!rows.length && !cols.length) break;
+    chain++;
+
+    const kill = new Set();
+    rows.forEach(r=>{ for(let c=0;c<N;c++) kill.add(r+":"+c); });
+    cols.forEach(c=>{ for(let r=0;r<N;r++) kill.add(r+":"+c); });
+
+    flashLines(rows, cols);
+    chainToast(chain);
+    SFX.clear(chain);
+    shake(chain);
+    buzz(chain>1 ? [0,20,45,20] : 16);
+    bump(kill.size * 10 * Math.pow(2, chain-1));
+
+    let anchorsFreed = 0;
+    kill.forEach(k=>{
+      const [r,c] = k.split(":").map(Number);
+      const b = board[r][c];
+      if(b && b.anchor) anchorsFreed++;
+      if(b){ const el = els.get(b.id);
+        if(el){ el.style.transform = el.style.getPropertyValue("--tf") + " scale(1.45)"; el.classList.add("dead"); }
+        board[r][c] = null; }
+    });
+    if(anchorsFreed){
+      bump(anchorsFreed * 150 * Math.pow(2, chain-1));
+      tone(110, 0.34, {type:"sawtooth", gain:0.15, to:70});
+      tone(660, 0.30, {type:"triangle", gain:0.13, delay:0.05});
+    }
+    await sleep(210);
+    renderBoard(true);
+
+    // tip the tray: everything slides, and loose tiles roll in from the high side
+    const dir = DIRS[dirIdx];
+    trayEl.classList.add("t-"+dir);
+    SFX.tilt();
+    gravity(dir);
+    clears++;
+    const k = (rows.length + cols.length) * Math.min(5, 2 + Math.floor(clears/12));
+    const anchorsIn = seedFrom(dir, k);
+    SFX.pebbles(k);
+    if(anchorsIn) SFX.anchorDrop();
+    renderBoard(true);
+    dirIdx = (dirIdx+1) % 4;
+    setDir();
+    await sleep(230);
+    trayEl.classList.remove("t-"+dir);
+    await sleep(140);
+  }
+}
+
+function rejectDrop(){
+  SFX.bad();
+  buzz([0,30,50,30]);
+  shake(1);
+  const f = document.createElement("div");
+  f.className = "badflash";
+  boardEl.appendChild(f);
+  setTimeout(()=>f.remove(), 320);
+}
+
+async function place(i, r0, c0){
+  const p = hand[i];
+  if(!p || !canPlaceAt(p.shape, r0, c0)) return false;
+  for(const [dr,dc] of p.shape) board[r0+dr][c0+dc] = {id:++uid, col:p.col};
+  hand[i] = null;
+  SFX.drop(); buzz(9);
+  bump(p.shape.length);
+  renderBoard(false);
+  renderHand();
+
+  busy = true;
+  await sleep(120);
+  await resolve();
+  if(hand.every(x=>!x)) dealHand();
+  busy = false;
+  checkOver();
+  return true;
+}
+
+function checkOver(){
+  const alive = hand.some(p=>p && canPlaceAnywhere(p.shape));
+  if(!alive){
+    over = true;
+    document.getElementById("finalScore").textContent = score.toLocaleString("tr-TR");
+    played++; store.set("egim.played", String(played));
+    document.getElementById("overSub").textContent =
+      "EN İYİ " + best.toLocaleString("tr-TR") + " · " + played + ". OYUN";
+    overEl.classList.add("show");
+    SFX.over(); buzz([0,55,90,55]);
+  }
+}
+
+// ---- drag & drop ----
+let drag = null;
+function clearGhost(){ boardEl.querySelectorAll(".ghost,.pflash,.blocker").forEach(e=>e.remove()); }
+
+function showGhost(shape, r0, c0){
+  clearGhost();
+  const ok = canPlaceAt(shape, r0, c0);
+  dragEl.classList.toggle("bad", !ok);
+  const f = document.createDocumentFragment();
+  for(const [dr,dc] of shape){
+    const r=r0+dr, c=c0+dc;
+    if(r<0||c<0||r>=N||c>=N) continue;
+    const g = document.createElement("div");
+    g.className = "ghost" + (ok ? "" : " bad");
+    g.style.cssText = `left:${c*CELL+GAP/2}px;top:${r*CELL+GAP/2}px;width:${CELL-GAP}px;height:${CELL-GAP}px`;
+    f.appendChild(g);
+    // name the actual culprit: the tile already sitting there
+    if(!ok && board[r][c]){
+      const bl = document.createElement("div");
+      bl.className = "blocker";
+      bl.style.cssText = `left:${c*CELL+GAP/2}px;top:${r*CELL+GAP/2}px;width:${CELL-GAP}px;height:${CELL-GAP}px`;
+      f.appendChild(bl);
+    }
+  }
+  // preview which lines would complete
+  if(ok){
+    const sim = board.map(row=>row.slice());
+    for(const [dr,dc] of shape) sim[r0+dr][c0+dc] = 1;
+    const {rows, cols} = fullLines(sim);
+    rows.forEach(r=>{ const e=document.createElement("div"); e.className="pflash";
+      e.style.cssText=`left:0;top:${r*CELL}px;width:${N*CELL}px;height:${CELL}px`; f.appendChild(e); });
+    cols.forEach(c=>{ const e=document.createElement("div"); e.className="pflash";
+      e.style.cssText=`left:${c*CELL}px;top:0;width:${CELL}px;height:${N*CELL}px`; f.appendChild(e); });
+  }
+  boardEl.appendChild(f);
+}
+
+function targetCell(x, y, shape){
+  const rect = boardEl.getBoundingClientRect();
+  const [h,w] = dims(shape);
+  const left = x - (w*CELL)/2;
+  const top  = y - 30 - h*CELL;
+  return [Math.round((top - rect.top)/CELL), Math.round((left - rect.left)/CELL)];
+}
+
+function moveDrag(x, y){
+  const [h,w] = dims(drag.p.shape);
+  dragEl.style.transform = `translate(${x - (w*CELL)/2}px, ${y - 30 - h*CELL}px)`;
+  const [r,c] = targetCell(x, y, drag.p.shape);
+  if(r !== drag.r || c !== drag.c){
+    const ok = canPlaceAt(drag.p.shape, r, c);
+    if(drag.ok === true && ok === false) buzz(14);   // felt the moment it goes red
+    drag.ok = ok;
+  }
+  drag.r = r; drag.c = c;
+  showGhost(drag.p.shape, r, c);
+}
+
+handEl.addEventListener("pointerdown", e=>{
+  if(busy || over) return;
+  const slot = e.target.closest(".slot");
+  if(!slot) return;
+  const i = +slot.dataset.i;
+  if(!hand[i]) return;
+  e.preventDefault();
+  drag = {i, p:hand[i], r:-99, c:-99, ok:null};
+  SFX.pick(); buzz(5);
+  slot.classList.add("held");
+  dragEl.innerHTML = "";
+  dragEl.appendChild(pieceNode(hand[i], CELL));
+  moveDrag(e.clientX, e.clientY);
+  handEl.setPointerCapture(e.pointerId);
+});
+handEl.addEventListener("pointermove", e=>{ if(drag){ e.preventDefault(); moveDrag(e.clientX, e.clientY); } });
+
+async function endDrag(){
+  if(!drag) return;
+  const d = drag; drag = null;
+  dragEl.innerHTML = "";
+  dragEl.classList.remove("bad");
+  clearGhost();
+  handEl.querySelectorAll(".held").forEach(s=>s.classList.remove("held"));
+  const ok = await place(d.i, d.r, d.c);
+  if(!ok) rejectDrop();
+}
+handEl.addEventListener("pointerup", endDrag);
+handEl.addEventListener("pointercancel", endDrag);
+
+// ---- installable from the browser: manifest + icon built at runtime ----
+function installMeta(){
+  const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <rect width="512" height="512" rx="112" fill="#23262B"/>
+    <g transform="rotate(-8 256 256)">
+      <rect x="104" y="118" width="304" height="304" rx="26" fill="#191B1F"/>
+      <rect x="128" y="286" width="80" height="80" rx="12" fill="#C0574A"/>
+      <rect x="216" y="286" width="80" height="80" rx="12" fill="#D9A02B"/>
+      <rect x="304" y="286" width="80" height="80" rx="12" fill="#2F8C8C"/>
+      <rect x="216" y="198" width="80" height="80" rx="12" fill="#41609E"/>
+      <rect x="304" y="198" width="80" height="80" rx="12" fill="#7C9B4E"/>
+    </g>
+  </svg>`;
+  const iconURL = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(icon)));
+  const mf = {
+    name:"Eğim", short_name:"Eğim", start_url:".", display:"standalone",
+    orientation:"portrait", background_color:"#D6D8CE", theme_color:"#D6D8CE",
+    icons:[{src:iconURL, sizes:"512x512", type:"image/svg+xml", purpose:"any maskable"}]
+  };
+  try{
+    const url = URL.createObjectURL(new Blob([JSON.stringify(mf)], {type:"application/json"}));
+    const l = document.createElement("link"); l.rel = "manifest"; l.href = url;
+    document.head.appendChild(l);
+    const al = document.createElement("link");
+    al.rel = "apple-touch-icon"; al.href = iconURL;
+    document.head.appendChild(al);
+  }catch(e){}
+}
+installMeta();
+
+// browsers still try to zoom, select and long-press their way into a drag game
+document.addEventListener("gesturestart", e=>e.preventDefault());
+document.addEventListener("dblclick", e=>e.preventDefault(), {passive:false});
+document.addEventListener("contextmenu", e=>e.preventDefault());
+document.addEventListener("touchmove", e=>{ if(e.touches.length>1) e.preventDefault(); },
+  {passive:false});
+
+// ---- boot ----
+function start(){
+  board = newBoard(); score = 0; dirIdx = 0; over = false; busy = false; clears = 0;
+  els.forEach(el=>el.remove()); els.clear();
+  scoreEl.textContent = "0";
+  overEl.classList.remove("show");
+  setDir(); dealHand(); sizeUp();
+}
+const muteBtn = document.getElementById("mute");
+muteBtn.addEventListener("click", ()=>{
+  muted = !muted;
+  muteBtn.textContent = muted ? "🔇 SES KAPALI" : "🔊 SES AÇIK";
+  muteBtn.style.opacity = muted ? .3 : .45;
+});
+// how-to-play overlay
+const helpEl = document.getElementById("help");
+function showHelp(){ helpEl.classList.add("show"); }
+document.getElementById("helpBtn").addEventListener("click", showHelp);
+document.getElementById("helpClose").addEventListener("click", ()=>{
+  helpEl.classList.remove("show");
+  store.set("egim.seen","1");
+  audioInit();
+});
+
+document.getElementById("again").addEventListener("click", start);
+document.getElementById("reset").addEventListener("click", start);
+window.addEventListener("resize", sizeUp);
+window.addEventListener("orientationchange", ()=>setTimeout(sizeUp, 250));
+if(window.visualViewport) window.visualViewport.addEventListener("resize", sizeUp);
+
+// restore saved progress
+best   = parseInt(store.get("egim.best")   || "0", 10) || 0;
+played = parseInt(store.get("egim.played") || "0", 10) || 0;
+bestEl.textContent = best.toLocaleString("tr-TR");
+
+start();
+if(!store.get("egim.seen")) showHelp();
+})();
+</script>
+</body>
+</html>
