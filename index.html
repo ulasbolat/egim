@@ -861,25 +861,61 @@ function showGhost(shape, r0, c0){
   boardEl.appendChild(f);
 }
 
+/* How far the piece floats above the fingertip. Scales with the board so it
+   feels the same on a small phone and a tablet. */
+const lift = () => Math.round(CELL * 0.8);
+
+function dragOffset(shape){
+  const [h,w] = dims(shape);
+  return [ (w*CELL)/2, lift() + h*CELL ];       // finger sits below the piece
+}
+
+// Neighbours ordered by distance, used to forgive a near miss.
+const SNAP = [];
+for(let dr=-1; dr<=1; dr++) for(let dc=-1; dc<=1; dc++)
+  if(dr||dc) SNAP.push([dr, dc, dr*dr + dc*dc]);
+SNAP.sort((a,b)=>a[2]-b[2]);
+
 function targetCell(x, y, shape){
   const rect = boardEl.getBoundingClientRect();
   const [h,w] = dims(shape);
-  const left = x - (w*CELL)/2;
-  const top  = y - 30 - h*CELL;
-  return [Math.round((top - rect.top)/CELL), Math.round((left - rect.left)/CELL)];
+  const [ox,oy] = dragOffset(shape);
+  // clamp into the board, so dragging near an edge snaps in instead of dying
+  let r = Math.min(N-h, Math.max(0, Math.round((y - oy - rect.top ) / CELL)));
+  let c = Math.min(N-w, Math.max(0, Math.round((x - ox - rect.left) / CELL)));
+  if(canPlaceAt(shape, r, c)) return [r, c];
+  // a few pixels off shouldn't cost the move: take the nearest legal cell
+  for(const [dr,dc] of SNAP){
+    const nr = r+dr, nc = c+dc;
+    if(nr<0 || nc<0 || nr>N-h || nc>N-w) continue;
+    if(canPlaceAt(shape, nr, nc)) return [nr, nc];
+  }
+  return [r, c];
+}
+
+/* Pointer events fire far faster than the screen refreshes. Rebuilding the
+   ghost on every one of them was the thing making the drag feel like mud. */
+let rafId = 0, pendingPt = null;
+
+function flushDrag(){
+  rafId = 0;
+  if(!drag || !pendingPt) return;
+  const [x,y] = pendingPt;
+  const [ox,oy] = dragOffset(drag.p.shape);
+  dragEl.style.transform = `translate(${x-ox}px, ${y-oy}px)`;
+  const [r,c] = targetCell(x, y, drag.p.shape);
+  if(r === drag.r && c === drag.c) return;       // nothing moved: touch no DOM
+  drag.r = r; drag.c = c;
+  const ok = canPlaceAt(drag.p.shape, r, c);
+  if(drag.ok === true  && ok === false) buzz(14);
+  if(drag.ok === false && ok === true ) buzz(5);
+  drag.ok = ok;
+  showGhost(drag.p.shape, r, c);
 }
 
 function moveDrag(x, y){
-  const [h,w] = dims(drag.p.shape);
-  dragEl.style.transform = `translate(${x - (w*CELL)/2}px, ${y - 30 - h*CELL}px)`;
-  const [r,c] = targetCell(x, y, drag.p.shape);
-  if(r !== drag.r || c !== drag.c){
-    const ok = canPlaceAt(drag.p.shape, r, c);
-    if(drag.ok === true && ok === false) buzz(14);   // felt the moment it goes red
-    drag.ok = ok;
-  }
-  drag.r = r; drag.c = c;
-  showGhost(drag.p.shape, r, c);
+  pendingPt = [x,y];
+  if(!rafId) rafId = requestAnimationFrame(flushDrag);
 }
 
 handEl.addEventListener("pointerdown", e=>{
@@ -901,6 +937,13 @@ handEl.addEventListener("pointermove", e=>{ if(drag){ e.preventDefault(); moveDr
 
 async function endDrag(){
   if(!drag) return;
+  if(rafId){ cancelAnimationFrame(rafId); rafId = 0; }
+  if(pendingPt){                                  // resolve the final position exactly
+    const [x,y] = pendingPt;
+    const [r,c] = targetCell(x, y, drag.p.shape);
+    drag.r = r; drag.c = c;
+  }
+  pendingPt = null;
   const d = drag; drag = null;
   dragEl.innerHTML = "";
   dragEl.classList.remove("bad");
