@@ -269,7 +269,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 <body>
 
 <header>
-  <div class="wordmark">EĞİM<small>PROTOTİP 0.1</small></div>
+  <div class="wordmark">EĞİM<small>SÜRÜM 7</small></div>
   <div class="scores">
     <div class="scorebox best"><div class="lbl">EN İYİ</div><div class="val" id="best">0</div></div>
     <div class="scorebox"><div class="lbl">SKOR</div><div class="val" id="score">0</div></div>
@@ -882,11 +882,16 @@ async function place(i, r0, c0){
   renderBoard(false);
   renderHand();
 
-  busy = true;
-  await sleep(120);
-  await resolve();
+  // Only lock input when there is actually an animation to wait for; otherwise
+  // the next piece can be picked up immediately.
+  const pending = fullLines(board);
+  if(pending.rows.length || pending.cols.length){
+    busy = true;
+    await sleep(90);
+    await resolve();
+    busy = false;
+  }
   if(hand.every(x=>!x)) dealHand();
-  busy = false;
   checkOver();
   return true;
 }
@@ -1026,34 +1031,67 @@ function moveDrag(x, y){
    the duration of the drag avoids the whole problem. */
 function onWinMove(e){ if(drag){ e.preventDefault(); moveDrag(e.clientX, e.clientY); } }
 function onWinUp(e){ if(drag){ moveDrag(e.clientX, e.clientY); endDrag(); } }
-function onWinCancel(){ if(drag){ drag = null; resetDragVisuals(); } }   // abort, place nothing
+function onWinCancel(){ if(drag){ drag = null; resetDragVisuals(); } }
+
+function onTouchMove(e){
+  if(!drag) return;
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  moveDrag(t.clientX, t.clientY);
+}
+function onTouchEnd(e){
+  if(!drag) return;
+  const t = e.changedTouches[0];
+  moveDrag(t.clientX, t.clientY);
+  endDrag();
+}
 
 function bindDragListeners(on){
   const m = on ? "addEventListener" : "removeEventListener";
   window[m]("pointermove", onWinMove, {passive:false});
   window[m]("pointerup", onWinUp);
   window[m]("pointercancel", onWinCancel);
+  window[m]("touchmove", onTouchMove, {passive:false});
+  window[m]("touchend", onTouchEnd);
+  window[m]("touchcancel", onWinCancel);
 }
 
-handEl.addEventListener("pointerdown", e=>{
-  if(busy || over) return;
-  const slot = e.target.closest(".slot");
-  if(!slot) return;
-  const i = +slot.dataset.i;
-  if(!hand[i]) return;
-  e.preventDefault();
+function beginDrag(i, slot, x, y){
   drag = {i, p:hand[i], r:-99, c:-99, ok:null};
   SFX.pick(); buzz(5);
   slot.classList.add("held");
   dragEl.innerHTML = "";
   dragEl.appendChild(pieceNode(hand[i], CELL));
-  moveDrag(e.clientX, e.clientY);
+  moveDrag(x, y);
   bindDragListeners(true);
-  try{ handEl.setPointerCapture(e.pointerId); }catch(err){}
+}
+function slotFrom(target){
+  const slot = target && target.closest && target.closest(".slot");
+  if(!slot) return null;
+  const i = +slot.dataset.i;
+  return hand[i] ? {slot, i} : null;
+}
+
+/* Touch is handled on its own path. Pointer events look like the modern answer
+   but mobile Safari cancels and mis-routes them mid-drag, which is what made
+   the piece feel glued to the tray. Plain touch events are dependable. */
+handEl.addEventListener("touchstart", e=>{
+  if(busy || over || drag) return;
+  const hit = slotFrom(e.target);
+  if(!hit) return;
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  beginDrag(hit.i, hit.slot, t.clientX, t.clientY);
+}, {passive:false});
+
+handEl.addEventListener("pointerdown", e=>{
+  if(e.pointerType === "touch") return;        // the touch path owns fingers
+  if(busy || over || drag) return;
+  const hit = slotFrom(e.target);
+  if(!hit) return;
+  e.preventDefault();
+  beginDrag(hit.i, hit.slot, e.clientX, e.clientY);
 });
-// stop iOS deciding mid-drag that this was a scroll and cancelling the pointer
-handEl.addEventListener("touchstart", e=>e.preventDefault(), {passive:false});
-handEl.addEventListener("touchmove",  e=>e.preventDefault(), {passive:false});
 
 function resetDragVisuals(){
   if(rafId){ cancelAnimationFrame(rafId); rafId = 0; }
