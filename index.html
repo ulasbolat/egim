@@ -29,11 +29,16 @@
   --slide:260ms;
 }
 /* the tray stays slate; what changes is the surface it sits on */
-body.t0{--plaster:#D6D8CE;--plaster-dk:#BEC1B5;--ink:#14161A;--hi:#8A6A17}
-body.t1{--plaster:#E2CFBC;--plaster-dk:#C8AE96;--ink:#2A1D14;--hi:#8C4A1E}
-body.t2{--plaster:#C7D1D9;--plaster-dk:#A6B4C0;--ink:#131A21;--hi:#1F5A78}
-body.t3{--plaster:#262C34;--plaster-dk:#171B21;--ink:#E6E8E3;--hi:#D9A02B}
-body.t4{--plaster:#3E3752;--plaster-dk:#2A2439;--ink:#EAE5F2;--hi:#E0A46A}
+body.t0{--plaster:#D6D8CE;--plaster-dk:#BEC1B5;--ink:#14161A;--hi:#8A6A17;
+        --rim-hi:#4E5666;--rim:#3A404A;--rim-lo:#2B3039;--slate-lo:#191B1F;--slate:#23262B}
+body.t1{--plaster:#E2CFBC;--plaster-dk:#C8AE96;--ink:#2A1D14;--hi:#8C4A1E;
+        --rim-hi:#8A6A50;--rim:#6B5140;--rim-lo:#4E3B2E;--slate-lo:#241B15;--slate:#33271E}
+body.t2{--plaster:#C7D1D9;--plaster-dk:#A6B4C0;--ink:#131A21;--hi:#1F5A78;
+        --rim-hi:#5A7488;--rim:#3F5468;--rim-lo:#2C3D4D;--slate-lo:#141C24;--slate:#1E2A34}
+body.t3{--plaster:#262C34;--plaster-dk:#171B21;--ink:#E6E8E3;--hi:#D9A02B;
+        --rim-hi:#4E7458;--rim:#365441;--rim-lo:#243B2D;--slate-lo:#101A14;--slate:#19281E}
+body.t4{--plaster:#3E3752;--plaster-dk:#2A2439;--ink:#EAE5F2;--hi:#E0A46A;
+        --rim-hi:#6D5478;--rim:#513C5B;--rim-lo:#3A2A42;--slate-lo:#1A1220;--slate:#26192E}
 body{transition:background 1400ms ease}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -88,10 +93,11 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
   55%{transform:translate(6px,5px)}70%{transform:translate(-4px,-2px)}
   85%{transform:translate(2px,1px)}}
 .tray{
+  transition:background 1400ms ease;
   position:relative;
   padding:13px;
   border-radius:16px;
-  background:linear-gradient(160deg,var(--rim-hi),var(--rim) 40%,#2B3039);
+  background:linear-gradient(160deg,var(--rim-hi),var(--rim) 40%,var(--rim-lo));
   box-shadow:
     0 1px 0 rgba(255,255,255,.35) inset,
     0 18px 34px -14px rgba(20,22,26,.65),
@@ -107,11 +113,12 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
 .board{
   position:relative;
   background:var(--slate-lo);
+  transition:background 1400ms ease;
   border-radius:6px;
   box-shadow:0 3px 9px rgba(0,0,0,.55) inset;
   overflow:hidden;
 }
-.hole{position:absolute;border-radius:4px;background:var(--slate);
+.hole{position:absolute;border-radius:4px;background:var(--slate);transition:background 1400ms ease;
   box-shadow:0 1px 2px rgba(0,0,0,.4) inset}
 
 /* tiles */
@@ -143,9 +150,10 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
 
 /* preview */
 .ghost{position:absolute;left:0;top:0;border-radius:5px;pointer-events:none;
-  border:2px dashed rgba(255,255,255,.5);background:rgba(255,255,255,.10);
+  border:2px solid rgba(255,255,255,.92);background:rgba(255,255,255,.34);
+  box-shadow:0 0 14px rgba(255,255,255,.45), 0 0 0 1px rgba(0,0,0,.35);
   will-change:transform}
-.ghost.no{border-color:rgba(255,255,255,.16);background:rgba(255,255,255,.03)}
+.ghost.no{border-color:rgba(255,255,255,.22);background:rgba(255,255,255,.05);box-shadow:none}
 .pflash{position:absolute;left:0;top:0;pointer-events:none;will-change:transform;
   background:rgba(217,160,43,.18);box-shadow:0 0 0 1px rgba(217,160,43,.5) inset}
 #drag.bad{opacity:.45}
@@ -269,7 +277,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 <body>
 
 <header>
-  <div class="wordmark">EĞİM<small>SÜRÜM 7</small></div>
+  <div class="wordmark">EĞİM<small>SÜRÜM 9</small></div>
   <div class="scores">
     <div class="scorebox best"><div class="lbl">EN İYİ</div><div class="val" id="best">0</div></div>
     <div class="scorebox"><div class="lbl">SKOR</div><div class="val" id="score">0</div></div>
@@ -286,7 +294,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
   </div>
 </div>
 
-<div class="caption">SIRADAKİ EĞİM <b id="dirname">AŞAĞI</b></div>
+<div class="caption">EĞİM <b id="dirname">AŞAĞI</b> <span style="opacity:.35">·</span> <b id="setname">SERAMİK</b></div>
 
 <div class="hand" id="hand"></div>
 <div class="footbar">
@@ -554,7 +562,7 @@ function renderBoard(instant){
     if(!el){
       el = document.createElement("div");
       el.className = "tile" + (b.anchor ? " anchor" : "");
-      el.style.background = b.col;
+      el.style.backgroundColor = b.col;   // NOT the `background` shorthand: it wipes background-image
       boardEl.appendChild(el);
       els.set(b.id, el);
       el.style.setProperty("--tf", tf);
@@ -708,7 +716,7 @@ function pieceNode(p, cell){
   box.style.height = (h*cell)+"px";
   for(const [r,c] of p.shape){
     const i = document.createElement("i");
-    i.style.cssText = `left:${c*cell+g/2}px;top:${r*cell+g/2}px;width:${cell-g}px;height:${cell-g}px;background:${p.col}`;
+    i.style.cssText = `left:${c*cell+g/2}px;top:${r*cell+g/2}px;width:${cell-g}px;height:${cell-g}px;background-color:${p.col}`;
     box.appendChild(i);
   }
   return box;
@@ -755,6 +763,8 @@ let theme = 0;
 function setTheme(i, announce){
   theme = i % THEMES.length;
   document.body.className = "t" + theme + " s" + theme;
+  const sn = document.getElementById("setname");
+  if(sn) sn.textContent = THEMES[theme];
   if(!announce) return;
   const t = document.createElement("div");
   t.className = "themeToast";
@@ -809,9 +819,10 @@ function flashLines(rows, cols){
 }
 
 // ---- main resolve loop ----
+const MAX_CHAIN = 10;      // safety valve, see the seeding note below
 async function resolve(){
   let chain = 0;
-  while(true){
+  while(chain < MAX_CHAIN){
     const {rows, cols} = fullLines(board);
     if(!rows.length && !cols.length) break;
     chain++;
@@ -859,10 +870,17 @@ async function resolve(){
     clears++;
     const want = Math.floor(clears/2) % THEMES.length;
     if(want !== theme) setTheme(want, true);
-    const k = (rows.length + cols.length) * Math.min(5, 2 + Math.floor(clears/12));
-    const anchorsIn = seedFrom(dir, k);
-    SFX.pebbles(k);
-    if(anchorsIn) SFX.anchorDrop();
+    /* Only the first two steps of a chain bring new tiles in. Seeding on every
+       step let a chain feed itself: more tiles -> more lines -> more tiles, and
+       the board could churn for many seconds with input locked. */
+    const k = chain <= 2
+      ? (rows.length + cols.length) * Math.min(5, 2 + Math.floor(clears/12))
+      : 0;
+    if(k){
+      const anchorsIn = seedFrom(dir, k);
+      SFX.pebbles(k);
+      if(anchorsIn) SFX.anchorDrop();
+    }
     renderBoard(true);
     dirIdx = (dirIdx+1) % 4;
     setDir();
@@ -887,9 +905,12 @@ async function place(i, r0, c0){
   const pending = fullLines(board);
   if(pending.rows.length || pending.cols.length){
     busy = true;
-    await sleep(90);
-    await resolve();
-    busy = false;
+    try{
+      await sleep(90);
+      await resolve();
+    } finally {
+      busy = false;                  // input comes back even if resolve throws
+    }
   }
   if(hand.every(x=>!x)) dealHand();
   checkOver();
@@ -971,7 +992,10 @@ function showGhost(shape, r0, c0){
 
 /* How far the piece floats above the fingertip. Kept small on purpose: the
    further the piece sits from your finger, the more you are aiming blind. */
-const lift = () => Math.round(CELL * 0.22);
+let byTouch = false;                       // set by whichever input started the drag
+/* A fingertip covers roughly a cell, so on touch the piece has to float clear
+   of it or you are aiming blind. A mouse cursor hides nothing, so it sits close. */
+const lift = () => Math.round(CELL * (byTouch ? 0.55 : 0.25));
 
 function dragOffset(shape){
   const [h,w] = dims(shape);
@@ -984,7 +1008,22 @@ for(let dr=-2; dr<=2; dr++) for(let dc=-2; dc<=2; dc++)
   if(dr||dc) SNAP.push([dr, dc, dr*dr + dc*dc]);
 SNAP.sort((a,b)=>a[2]-b[2]);
 
+/* True only while the piece is actually over the tray. Outside that the drop is
+   a cancel - otherwise the clamp below would force a placement every single time
+   and you could never put a piece back. */
+function aimingAtBoard(x, y, shape){
+  const rect = boardEl.getBoundingClientRect();
+  const [h,w] = dims(shape);
+  const [ox,oy] = dragOffset(shape);
+  const cx = x - ox + (w*CELL)/2;           // centre of the piece, not the finger
+  const cy = y - oy + (h*CELL)/2;
+  const m = CELL * 1.1;                     // a cell of slack around the edges
+  return cx > rect.left - m && cx < rect.left + N*CELL + m &&
+         cy > rect.top  - m && cy < rect.top  + N*CELL + m;
+}
+
 function targetCell(x, y, shape){
+  if(!aimingAtBoard(x, y, shape)) return null;
   const rect = boardEl.getBoundingClientRect();
   const [h,w] = dims(shape);
   const [ox,oy] = dragOffset(shape);
@@ -1009,9 +1048,11 @@ function flushDrag(){
   rafId = 0;
   if(!drag || !pendingPt) return;
   const [x,y] = pendingPt;
-  const [r,c] = targetCell(x, y, drag.p.shape);
+  const t = targetCell(x, y, drag.p.shape);
+  const r = t ? t[0] : -99, c = t ? t[1] : -99;
   if(r === drag.r && c === drag.c) return;       // nothing moved: touch no DOM
   drag.r = r; drag.c = c;
+  if(!t){ clearGhost(); dragEl.classList.remove("bad"); return; }
   showGhost(drag.p.shape, r, c);
 }
 
@@ -1080,6 +1121,7 @@ handEl.addEventListener("touchstart", e=>{
   const hit = slotFrom(e.target);
   if(!hit) return;
   e.preventDefault();
+  byTouch = true;
   const t = e.changedTouches[0];
   beginDrag(hit.i, hit.slot, t.clientX, t.clientY);
 }, {passive:false});
@@ -1090,6 +1132,7 @@ handEl.addEventListener("pointerdown", e=>{
   const hit = slotFrom(e.target);
   if(!hit) return;
   e.preventDefault();
+  byTouch = false;
   beginDrag(hit.i, hit.slot, e.clientX, e.clientY);
 });
 
@@ -1110,8 +1153,9 @@ async function endDrag(){
   try{
     if(pendingPt){                                // resolve the final position exactly
       const [x,y] = pendingPt;
-      const [r,c] = targetCell(x, y, d.p.shape);
-      d.r = r; d.c = c;
+      const t = targetCell(x, y, d.p.shape);
+      d.r = t ? t[0] : -99;
+      d.c = t ? t[1] : -99;
     }
   } finally {
     drag = null;
