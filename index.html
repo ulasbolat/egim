@@ -194,6 +194,12 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
   pointer-events:none;display:block}
 .tile > svg{border-radius:5px;overflow:hidden}
 
+#hud{position:fixed;left:8px;bottom:8px;z-index:90;display:none;
+  font-family:"IBM Plex Mono",monospace;font-size:10px;line-height:1.5;
+  background:rgba(10,12,16,.86);color:#8CE99A;padding:7px 9px;border-radius:7px;
+  white-space:pre;pointer-events:none;letter-spacing:.03em}
+#hud.on{display:block}
+
 /* ---------- combo effects ---------- */
 .spark{position:absolute;border-radius:2px;pointer-events:none;
   animation:spark 480ms cubic-bezier(.15,.75,.35,1) forwards}
@@ -282,7 +288,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 <body>
 
 <header>
-  <div class="wordmark">EĞİM<small>SÜRÜM 12</small></div>
+  <div class="wordmark">EĞİM<small>SÜRÜM 13</small></div>
   <div class="scores">
     <div class="scorebox best"><div class="lbl">EN İYİ</div><div class="val" id="best">0</div></div>
     <div class="scorebox"><div class="lbl">SKOR</div><div class="val" id="score">0</div></div>
@@ -309,6 +315,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 </div>
 
 <div id="rotate"><p>EĞİM DİKEY OYNANIR<br><br>Telefonu çevir.</p></div>
+<div id="hud"></div>
 <div id="drag"></div>
 <div id="toast"></div>
 
@@ -515,6 +522,37 @@ function shake(level){
   setTimeout(()=>st.classList.remove(cls), 420);
 }
 document.addEventListener("pointerdown", audioInit);
+
+/* ---------- performance readout ----------
+   There is no way to profile someone else's phone from here, so the phone can
+   report for itself. Tap the version stamp under the logo to switch it on. */
+const hudEl = document.getElementById("hud");
+let hudOn = false, frames = 0, fps = 0, moveCount = 0, moveRate = 0;
+let worstLag = 0, lagSum = 0, lagN = 0;
+
+function hudTick(){
+  frames++;
+  requestAnimationFrame(hudTick);
+}
+requestAnimationFrame(hudTick);
+setInterval(()=>{
+  fps = frames; frames = 0;
+  moveRate = moveCount; moveCount = 0;
+  if(!hudOn) return;
+  const avg = lagN ? (lagSum/lagN).toFixed(1) : "0.0";
+  hudEl.textContent =
+    "FPS        " + String(fps).padStart(3) + "\n" +
+    "parmak/sn  " + String(moveRate).padStart(3) + "\n" +
+    "gecikme    " + avg + " ms  (en kotu " + worstLag.toFixed(1) + ")\n" +
+    "tas        " + document.querySelectorAll(".tile").length + "\n" +
+    "hucre      " + CELL + "px   " + (LEAN ? "LEAN" : "TAM");
+  worstLag = 0; lagSum = 0; lagN = 0;
+}, 1000);
+
+document.querySelector(".wordmark small").addEventListener("click", ()=>{
+  hudOn = !hudOn;
+  hudEl.classList.toggle("on", hudOn);
+});
 /* ===================== END FEEL LAYER ===================== */
 const norm  = s => { // normalise shape to 0-based bounds
   const minr = Math.min(...s.map(a=>a[0])), minc = Math.min(...s.map(a=>a[1]));
@@ -541,6 +579,7 @@ function sizeUp(){
   boardEl.style.width = px+"px";
   boardEl.style.height = px+"px";
   drawHoles();
+  boardRect = null;
   renderBoard(true);
   if(hand) renderHand();
 }
@@ -986,6 +1025,7 @@ function checkOver(){
 // ---- drag & drop ----
 let drag = null;
 const ghostPool = [], flashPool = [];
+const scratch = Array.from({length:N},()=>Array(N).fill(null));
 function buildPools(){
   if(ghostPool.length) return;
   for(let i=0;i<9;i++){                       // biggest piece is 3x3
@@ -1026,7 +1066,9 @@ function showGhost(shape, r0, c0){
 
   let fi = 0;
   if(ok){                                     // preview which lines would go
-    const sim = board.map(row=>row.slice());
+    const sim = scratch;
+    for(let r=0;r<N;r++){ const src = board[r], dst = sim[r];
+      for(let c=0;c<N;c++) dst[c] = src[c]; }
     for(const [dr,dc] of shape) sim[r0+dr][c0+dc] = 1;
     const f = fullLines(sim);
     for(const r of f.rows){
@@ -1064,8 +1106,20 @@ SNAP.sort((a,b)=>a[2]-b[2]);
 /* True only while the piece is actually over the tray. Outside that the drop is
    a cancel - otherwise the clamp below would force a placement every single time
    and you could never put a piece back. */
+/* Reading getBoundingClientRect forces the browser to recompute layout. Doing it
+   twice per touch event, on a page with a few hundred nodes, is a classic way to
+   make a drag feel like mud on a phone. The board cannot move mid-drag, so it is
+   measured once per drag and reused. */
+let boardRect = null;
+function measureBoard(){
+  const r = boardEl.getBoundingClientRect();
+  boardRect = {left:r.left, top:r.top};
+  return boardRect;
+}
+function rectOf(){ return boardRect || measureBoard(); }
+
 function aimingAtBoard(x, y, shape){
-  const rect = boardEl.getBoundingClientRect();
+  const rect = rectOf();
   const [h,w] = dims(shape);
   const [ox,oy] = dragOffset(shape);
   const cx = x - ox + (w*CELL)/2;           // centre of the piece, not the finger
@@ -1077,7 +1131,7 @@ function aimingAtBoard(x, y, shape){
 
 function targetCell(x, y, shape){
   if(!aimingAtBoard(x, y, shape)) return null;
-  const rect = boardEl.getBoundingClientRect();
+  const rect = rectOf();
   const [h,w] = dims(shape);
   const [ox,oy] = dragOffset(shape);
   // clamp into the board, so dragging near an edge snaps in instead of dying
@@ -1110,13 +1164,17 @@ function flushDrag(){
 }
 
 function moveDrag(x, y){
+  const t0 = performance.now();
   pendingPt = [x,y];
-  if(!drag) return;
+  moveCount++;
+  if(!drag){ return; }
   // the piece itself is glued to the finger - a single cheap transform write,
   // no waiting for the next frame. Only the ghost work is deferred.
   const [ox,oy] = dragOffset(drag.p.shape);
   dragEl.style.transform = `translate3d(${x-ox}px, ${y-oy}px, 0)`;
   if(!rafId) rafId = requestAnimationFrame(flushDrag);
+  const dt = performance.now() - t0;
+  lagSum += dt; lagN++; if(dt > worstLag) worstLag = dt;
 }
 
 /* Pointer capture is unreliable on mobile Safari: once the finger leaves the
@@ -1151,6 +1209,7 @@ function bindDragListeners(on){
 }
 
 function beginDrag(i, slot, x, y){
+  measureBoard();                    // one layout read per drag, not per frame
   drag = {i, p:hand[i], r:-99, c:-99, ok:null};
   SFX.pick(); buzz(5);
   slot.classList.add("held");
