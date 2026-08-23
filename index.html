@@ -244,11 +244,12 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
 @keyframes tt{0%{opacity:0}18%{opacity:.75}72%{opacity:.75}100%{opacity:0}}
 
 /* ---------- toast ---------- */
-#toast{position:fixed;left:50%;top:34%;transform:translate(-50%,-50%);z-index:50;
+#toast{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:50;
   pointer-events:none;text-align:center}
-.chain{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:46px;
+.chain{will-change:transform,opacity;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;
+  font-size:min(26vw,150px);line-height:.9;
   color:var(--ochre);letter-spacing:-.03em;
-  text-shadow:0 3px 0 #8A6A17, 0 8px 22px rgba(0,0,0,.35);
+  text-shadow:0 4px 0 #8A6A17, 0 10px 34px rgba(0,0,0,.55), 0 0 60px rgba(217,160,43,.5);
   animation:rise 620ms cubic-bezier(.2,1.4,.4,1) forwards}
 @keyframes rise{0%{transform:translateY(14px) scale(.6);opacity:0}
   25%{transform:translateY(0) scale(1);opacity:1}
@@ -298,7 +299,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 <body>
 
 <header>
-  <div class="wordmark">EĞİM<small>SÜRÜM 15</small></div>
+  <div class="wordmark">EĞİM<small>SÜRÜM 16</small></div>
   <div class="scores">
     <div class="scorebox best"><div class="lbl">EN İYİ</div><div class="val" id="best">0</div></div>
     <div class="scorebox"><div class="lbl">SKOR</div><div class="val" id="score">0</div></div>
@@ -621,7 +622,7 @@ function renderBoard(instant){
       el = document.createElement("div");
       el.className = "tile" + (b.anchor ? " anchor" : "");
       el.style.backgroundColor = b.col;
-      if(!b.anchor && MOTIF[theme]) el.innerHTML = MOTIF[theme];   // NOT the `background` shorthand: it wipes background-image
+      if(!b.anchor){ const mn = motifNode(theme); if(mn) el.appendChild(mn); }   // NOT the `background` shorthand: it wipes background-image
       boardEl.appendChild(el);
       els.set(b.id, el);
       el.style.setProperty("--tf", tf);
@@ -776,7 +777,7 @@ function pieceNode(p, cell){
   for(const [r,c] of p.shape){
     const i = document.createElement("i");
     i.style.cssText = `left:${c*cell+g/2}px;top:${r*cell+g/2}px;width:${cell-g}px;height:${cell-g}px;background-color:${p.col}`;
-    if(MOTIF[theme]) i.innerHTML = MOTIF[theme];
+    { const mn = motifNode(theme); if(mn) i.appendChild(mn); }
     box.appendChild(i);
   }
   return box;
@@ -819,9 +820,10 @@ function chainToast(n){
   toastEl.innerHTML = "";
   const d = document.createElement("div");
   d.className = "chain";
-  d.textContent = n===1 ? "TEMİZ" : "ZİNCİR ×"+n;
+  if(n === 1){ d.textContent = "TEMİZ"; d.style.fontSize = "min(11vw,58px)"; }
+  else { d.innerHTML = n + "<span style=\"font-size:.42em;vertical-align:.55em\">×</span>"; }
   toastEl.appendChild(d);
-  setTimeout(()=>{ if(d.parentNode) d.remove(); }, 640);
+  setTimeout(()=>{ if(d.parentNode) d.remove(); }, 760);
 }
 const THEMES = ["SERAMİK","KAKTÜS","KEDİ","HEDİYE","KÖPEK","ATEŞ","BUZ"];
 /* Motifs are injected as real SVG children rather than CSS background images.
@@ -836,11 +838,26 @@ const MOTIF = [
   "<svg viewBox='0 0 100 100' preserveAspectRatio='none'><path d='M50 8c18 22 32 34 30 52-2 22-16 34-30 34S22 82 20 60C18 42 32 30 50 8z' fill='#000' fill-opacity='.30'/><path d='M50 26c12 16 20 24 18 36-2 16-10 24-18 24s-16-8-18-24c-2-12 6-20 18-36z' fill='#fff' fill-opacity='.42'/><path d='M50 48c7 10 10 15 8 22-2 9-4 12-8 12s-6-3-8-12c-2-7 1-12 8-22z' fill='#fff' fill-opacity='.72'/></svg>",
   "<svg viewBox='0 0 100 100' preserveAspectRatio='none'><path d='M50 12V88M18 31 82 69M82 31 18 69' stroke='#fff' stroke-opacity='.72' stroke-width='5' stroke-linecap='round'/><path d='M50 26l-9-9M50 26l9-9M50 74l-9 9M50 74l9 9M31 39l-12 2M31 39l2-12M69 61l12-2M69 61l-2 12M69 39l12 2M69 39l-2-12M31 61l-12-2M31 61l2 12' stroke='#fff' stroke-opacity='.62' stroke-width='4' stroke-linecap='round'/><path d='M41 50a9 9 0 1 0 18 0 9 9 0 1 0-18 0' fill='#fff' fill-opacity='.55'/></svg>"
 ];
+/* Parsing an SVG string is expensive. Each motif is parsed once into a template
+   node and everything after that is a cheap clone. */
+const motifTpl = [];
+function motifNode(i){
+  if(!MOTIF[i]) return null;
+  if(!motifTpl[i]){
+    const t = document.createElement("div");
+    t.innerHTML = MOTIF[i];
+    motifTpl[i] = t.firstChild;
+  }
+  return motifTpl[i].cloneNode(true);
+}
 function paintMotifs(){
-  const m = MOTIF[theme] || "";
-  document.querySelectorAll(".tile:not(.anchor), .pc i").forEach(el=>{
-    if(el.innerHTML !== m) el.innerHTML = m;
-  });
+  const nodes = document.querySelectorAll(".tile:not(.anchor), .pc i");
+  for(const el of nodes){
+    const cur = el.firstChild;
+    if(cur) el.removeChild(cur);
+    const n = motifNode(theme);
+    if(n) el.appendChild(n);
+  }
 }
 let theme = 0;
 function setTheme(i, announce){
@@ -859,7 +876,8 @@ function setTheme(i, announce){
 
 // shards fly out of every tile that just went
 function sparks(cells){
-  const budget = Math.min(cells.length * (LEAN ? 2 : 3), LEAN ? 30 : 60);
+  const budget = Math.min(cells.length * (LEAN ? 1 : 3), LEAN ? 14 : 60);
+  const frag = document.createDocumentFragment(), batch = [];
   for(let i=0;i<budget;i++){
     const [r,c,col] = cells[i % cells.length];
     const a = Math.random() * Math.PI * 2;
@@ -872,9 +890,11 @@ function sparks(cells){
       `--x:${c*CELL + CELL/2 - sz/2}px;--y:${r*CELL + CELL/2 - sz/2}px;` +
       `--dx:${(Math.cos(a)*d).toFixed(1)}px;--dy:${(Math.sin(a)*d - CELL*0.5).toFixed(1)}px;` +
       `--rot:${((Math.random()*2-1)*220).toFixed(0)}deg`;
-    boardEl.appendChild(e);
-    setTimeout(()=>e.remove(), 520);
+    frag.appendChild(e);
+    batch.push(e);
   }
+  boardEl.appendChild(frag);                 // one insertion, one style pass
+  setTimeout(()=>batch.forEach(e=>e.remove()), 520);
 }
 
 // the points you just earned, where you earned them
@@ -907,13 +927,26 @@ const RAIN_KITS = [
   {n:"ALEV", c:["#FF8A2B","#F04A22","#FFC13D","#E03A18"], s:"<path d='M50 4c20 24 34 36 32 56-2 24-18 36-32 36S16 84 14 60C12 40 30 28 50 4z' fill='@@'/><path d='M50 34c9 13 15 19 14 29-1 13-8 19-14 19s-13-6-14-19c-1-10 5-16 14-29z' fill='#FFF' fill-opacity='.55'/>"}
 ];
 
+const kitTpl = {};
+function kitNode(kit, col){
+  const key = kit.n + col;
+  if(!kitTpl[key]){
+    const t = document.createElement("div");
+    t.innerHTML = "<svg viewBox='0 0 100 100'>" + kit.s.split("@@").join(col) + "</svg>";
+    kitTpl[key] = t.firstChild;
+  }
+  return kitTpl[key].cloneNode(true);
+}
+
 function rain(chain){
   const kit = RAIN_KITS[Math.min(RAIN_KITS.length - 1, Math.max(0, chain - 2))];
   // chain steps overlap, so cap what can be on screen at once
   const live = boardEl.getElementsByClassName("rain").length;
-  const room = (LEAN ? 18 : 30) - live;
+  const room = (LEAN ? 12 : 30) - live;
   if(room <= 0) return;
-  const count = Math.min(room, LEAN ? 16 : 26, 5 + chain * 4);
+  const count = Math.min(room, LEAN ? 10 : 22, 4 + chain * 3);
+  const frag = document.createDocumentFragment(), batch = [];
+  let maxLife = 0;
   const span  = N * CELL;
   for(let i=0;i<count;i++){
     const sz = Math.round(CELL * (0.40 + Math.random()*0.34));
@@ -927,10 +960,13 @@ function rain(chain){
       `--fall:${span + sz*2}px;` +
       `--rot:${((Math.random()*2-1)*540).toFixed(0)}deg;` +
       `--dur:${dur}ms;animation-delay:${(Math.random()*260).toFixed(0)}ms`;
-    e.innerHTML = "<svg viewBox='0 0 100 100'>" + kit.s.split("@@").join(col) + "</svg>";
-    boardEl.appendChild(e);
-    setTimeout(()=>e.remove(), dur + 320);
+    e.appendChild(kitNode(kit, col));
+    frag.appendChild(e);
+    batch.push(e);
+    if(dur > maxLife) maxLife = dur;
   }
+  boardEl.appendChild(frag);
+  setTimeout(()=>batch.forEach(e=>e.remove()), maxLife + 400);
 }
 
 function gainAt(cells, amount){
@@ -960,6 +996,7 @@ function flashLines(rows, cols){
 
 // ---- main resolve loop ----
 const MAX_CHAIN = 10;      // safety valve, see the seeding note below
+let pendingTheme = -1;
 async function resolve(){
   let chain = 0;
   const restoreSlide = ()=>document.documentElement.style.setProperty("--slide","130ms");
@@ -1006,8 +1043,8 @@ async function resolve(){
     /* A chain is the payoff, so give it time to read. A lone clear stays quick
        because that is most moves and nobody wants to wait for it. */
     const slow = chain > 1;
-    document.documentElement.style.setProperty("--slide", slow ? "430ms" : "130ms");
-    await sleep(slow ? 240 : 105);
+    document.documentElement.style.setProperty("--slide", slow ? "300ms" : "130ms");
+    await sleep(slow ? 170 : 105);
     renderBoard(true);
 
     // tip the tray: everything slides, and loose tiles roll in from the high side
@@ -1016,11 +1053,11 @@ async function resolve(){
     SFX.tilt();
     // on a chain, show the tray tipping before anything moves - that beat is
     // what makes the slide readable instead of a blink
-    if(slow) await sleep(190);
+    if(slow) await sleep(130);
     gravity(dir);
     clears++;
     const want = Math.floor(clears/2) % THEMES.length;
-    if(want !== theme) setTheme(want, true);
+    if(want !== theme) pendingTheme = want;      // swap after the chain, not during it
     /* Only the first two steps of a chain bring new tiles in. Seeding on every
        step let a chain feed itself: more tiles -> more lines -> more tiles, and
        the board could churn for many seconds with input locked. */
@@ -1035,11 +1072,12 @@ async function resolve(){
     renderBoard(true);
     dirIdx = (dirIdx+1) % 4;
     setDir();
-    await sleep(slow ? 470 : 125);
+    await sleep(slow ? 320 : 125);
     trayEl.classList.remove("t-"+dir);
-    await sleep(slow ? 190 : 45);
+    await sleep(slow ? 110 : 45);
   }
   restoreSlide();
+  if(pendingTheme >= 0){ const t = pendingTheme; pendingTheme = -1; setTheme(t, true); }
 }
 
 async function place(i, r0, c0){
@@ -1150,7 +1188,7 @@ function showGhost(shape, r0, c0){
 let byTouch = false;                       // set by whichever input started the drag
 /* A fingertip covers roughly a cell, so on touch the piece has to float clear
    of it or you are aiming blind. A mouse cursor hides nothing, so it sits close. */
-const lift = () => Math.round(CELL * (byTouch ? 0.55 : 0.25));
+const lift = () => Math.round(CELL * (byTouch ? 0.38 : 0.25));
 
 function dragOffset(shape){
   const [h,w] = dims(shape);
