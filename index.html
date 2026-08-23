@@ -299,7 +299,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 <body>
 
 <header>
-  <div class="wordmark">EĞİM<small>SÜRÜM 16</small></div>
+  <div class="wordmark">EĞİM<small>SÜRÜM 17</small></div>
   <div class="scores">
     <div class="scorebox best"><div class="lbl">EN İYİ</div><div class="val" id="best">0</div></div>
     <div class="scorebox"><div class="lbl">SKOR</div><div class="val" id="score">0</div></div>
@@ -996,10 +996,8 @@ function flashLines(rows, cols){
 
 // ---- main resolve loop ----
 const MAX_CHAIN = 10;      // safety valve, see the seeding note below
-let pendingTheme = -1;
 async function resolve(){
   let chain = 0;
-  const restoreSlide = ()=>document.documentElement.style.setProperty("--slide","130ms");
   while(chain < MAX_CHAIN){
     const {rows, cols} = fullLines(board);
     if(!rows.length && !cols.length) break;
@@ -1040,24 +1038,17 @@ async function resolve(){
       tone(110, 0.34, {type:"sawtooth", gain:0.15, to:70});
       tone(660, 0.30, {type:"triangle", gain:0.13, delay:0.05});
     }
-    /* A chain is the payoff, so give it time to read. A lone clear stays quick
-       because that is most moves and nobody wants to wait for it. */
-    const slow = chain > 1;
-    document.documentElement.style.setProperty("--slide", slow ? "300ms" : "130ms");
-    await sleep(slow ? 170 : 105);
+    await sleep(95);
     renderBoard(true);
 
     // tip the tray: everything slides, and loose tiles roll in from the high side
     const dir = DIRS[dirIdx];
     trayEl.classList.add("t-"+dir);
     SFX.tilt();
-    // on a chain, show the tray tipping before anything moves - that beat is
-    // what makes the slide readable instead of a blink
-    if(slow) await sleep(130);
     gravity(dir);
     clears++;
     const want = Math.floor(clears/2) % THEMES.length;
-    if(want !== theme) pendingTheme = want;      // swap after the chain, not during it
+    if(want !== theme) setTheme(want, true);
     /* Only the first two steps of a chain bring new tiles in. Seeding on every
        step let a chain feed itself: more tiles -> more lines -> more tiles, and
        the board could churn for many seconds with input locked. */
@@ -1072,12 +1063,10 @@ async function resolve(){
     renderBoard(true);
     dirIdx = (dirIdx+1) % 4;
     setDir();
-    await sleep(slow ? 320 : 125);
+    await sleep(115);
     trayEl.classList.remove("t-"+dir);
-    await sleep(slow ? 110 : 45);
+    await sleep(40);
   }
-  restoreSlide();
-  if(pendingTheme >= 0){ const t = pendingTheme; pendingTheme = -1; setTheme(t, true); }
 }
 
 async function place(i, r0, c0){
