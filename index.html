@@ -307,7 +307,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 <body>
 
 <header>
-  <div class="wordmark">EĞİM<small>SÜRÜM 18</small></div>
+  <div class="wordmark">EĞİM<small>SÜRÜM 19</small></div>
   <div class="scores">
     <div class="scorebox best"><div class="lbl">EN İYİ</div><div class="val" id="best">0</div></div>
     <div class="scorebox"><div class="lbl">SKOR</div><div class="val" id="score">0</div></div>
@@ -767,6 +767,19 @@ function pickPiece(assist){
   return cands[(Math.random()*span)|0].sh;
 }
 
+/* Building the dragged piece inside the touchstart handler costs a visible
+   beat. Each hand piece keeps its board-scale node ready, built while the
+   board is already busy animating. */
+function dragNodeFor(i){
+  const p = hand[i];
+  if(!p) return null;
+  if(!p._node || p._cell !== CELL){ p._node = pieceNode(p, CELL); p._cell = CELL; }
+  return p._node;
+}
+function warmDragNodes(){
+  setTimeout(()=>{ for(let i=0;i<3;i++) dragNodeFor(i); }, 0);
+}
+
 function dealHand(){
   let filled = 0;
   for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(board[r][c]) filled++;
@@ -774,6 +787,7 @@ function dealHand(){
   hand = [0,1,2].map(()=>({ shape: pickPiece(assist),
                             col: COLORS[(Math.random()*COLORS.length)|0] }));
   renderHand();
+  warmDragNodes();
 }
 function pieceNode(p, cell){
   const [h,w] = dims(p.shape);
@@ -790,6 +804,14 @@ function pieceNode(p, cell){
   }
   return box;
 }
+function emptySlot(i){
+  const slot = handEl.children[i];
+  if(!slot) return;
+  slot.classList.add("used");
+  slot.classList.remove("held");
+  while(slot.firstChild) slot.removeChild(slot.firstChild);
+}
+
 function renderHand(){
   handEl.innerHTML = "";
   hand.forEach((p,i)=>{
@@ -1104,10 +1126,10 @@ async function place(i, r0, c0){
   if(!p || !canPlaceAt(p.shape, r0, c0)) return false;
   for(const [dr,dc] of p.shape) board[r0+dr][c0+dc] = {id:++uid, col:p.col};
   hand[i] = null;
-  SFX.drop(); buzz(9);
   bump(p.shape.length);
   renderBoard(false);
-  renderHand();
+  emptySlot(i);                              // touch only the slot that changed
+  setTimeout(()=>{ SFX.drop(); buzz(9); }, 0);
 
   // Only lock input when there is actually an animation to wait for; otherwise
   // the next piece can be picked up immediately.
@@ -1121,7 +1143,10 @@ async function place(i, r0, c0){
       busy = false;                  // input comes back even if resolve throws
     }
   }
-  if(hand.every(x=>!x)) dealHand();
+  if(hand.every(x=>!x)){
+    await sleep(0);          // let the drop paint before rebuilding the tray
+    dealHand();
+  }
   checkOver();
   return true;
 }
@@ -1328,12 +1353,13 @@ function bindDragListeners(on){
 function beginDrag(i, slot, x, y){
   measureBoard();                    // one layout read per drag, not per frame
   drag = {i, p:hand[i], r:-99, c:-99, ok:null};
-  SFX.pick(); buzz(5);
   slot.classList.add("held");
-  dragEl.innerHTML = "";
-  dragEl.appendChild(pieceNode(hand[i], CELL));
+  while(dragEl.firstChild) dragEl.removeChild(dragEl.firstChild);
+  dragEl.appendChild(dragNodeFor(i));       // already built, just re-parented
   moveDrag(x, y);
   bindDragListeners(true);
+  // sound and haptics must never sit between the finger and the pixels
+  setTimeout(()=>{ SFX.pick(); buzz(5); }, 0);
 }
 function slotFrom(target){
   const slot = target && target.closest && target.closest(".slot");
@@ -1368,7 +1394,7 @@ handEl.addEventListener("pointerdown", e=>{
 function resetDragVisuals(){
   if(rafId){ cancelAnimationFrame(rafId); rafId = 0; }
   pendingPt = null;
-  dragEl.innerHTML = "";
+  while(dragEl.firstChild) dragEl.removeChild(dragEl.firstChild);
   dragEl.classList.remove("bad");
   dragEl.style.transform = "translate3d(-9999px,-9999px,0)";
   bindDragListeners(false);
@@ -1444,11 +1470,17 @@ function start(){
   setDir(); dealHand(); sizeUp();
 }
 const muteBtn = document.getElementById("mute");
-muteBtn.addEventListener("click", ()=>{
-  muted = !muted;
+function applyMute(){
   muteBtn.textContent = muted ? "🔇 SES KAPALI" : "🔊 SES AÇIK";
   muteBtn.style.opacity = muted ? .3 : .45;
+}
+muteBtn.addEventListener("click", ()=>{
+  muted = !muted;
+  store.set("egim.muted", muted ? "1" : "0");
+  applyMute();
 });
+muted = store.get("egim.muted") === "1";
+applyMute();
 // how-to-play overlay
 const helpEl = document.getElementById("help");
 function showHelp(){ helpEl.classList.add("show"); }
