@@ -113,8 +113,11 @@ header{width:100%;max-width:400px;display:flex;align-items:flex-end;justify-cont
 .tray.t-down {transform:translateY(7px) scale(.985)}
 .tray.t-up   {transform:translateY(-7px) scale(1.012)}
 
+#ghostLayer{position:absolute;left:0;top:0;width:100%;height:100%;
+  pointer-events:none;transform:translateZ(0);will-change:transform;z-index:4}
 .board{
   position:relative;
+  contain:paint;
   background:var(--slate-lo);
   transition:background 650ms ease;
   border-radius:6px;
@@ -307,7 +310,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 <body>
 
 <header>
-  <div class="wordmark">EĞİM<small>SÜRÜM 19</small></div>
+  <div class="wordmark">EĞİM<small>SÜRÜM 20</small></div>
   <div class="scores">
     <div class="scorebox best"><div class="lbl">EN İYİ</div><div class="val" id="best">0</div></div>
     <div class="scorebox"><div class="lbl">SKOR</div><div class="val" id="score">0</div></div>
@@ -1122,6 +1125,7 @@ async function resolve(){
 }
 
 async function place(i, r0, c0){
+  clearGhost();                      // never let a preview square survive a drop
   const p = hand[i];
   if(!p || !canPlaceAt(p.shape, r0, c0)) return false;
   for(const [dr,dc] of p.shape) board[r0+dr][c0+dc] = {id:++uid, col:p.col};
@@ -1167,18 +1171,22 @@ function checkOver(){
 // ---- drag & drop ----
 let drag = null;
 const ghostPool = [], flashPool = [];
+let ghostLayer = null;
 const scratch = Array.from({length:N},()=>Array(N).fill(null));
 function buildPools(){
   if(ghostPool.length) return;
+  ghostLayer = document.createElement("div");
+  ghostLayer.id = "ghostLayer";
+  boardEl.appendChild(ghostLayer);
   for(let i=0;i<9;i++){                       // biggest piece is 3x3
     const d = document.createElement("div");
     d.className = "ghost"; d.style.display = "none";
-    boardEl.appendChild(d); ghostPool.push(d);
+    ghostLayer.appendChild(d); ghostPool.push(d);
   }
   for(let i=0;i<8;i++){
     const d = document.createElement("div");
     d.className = "pflash"; d.style.display = "none";
-    boardEl.appendChild(d); flashPool.push(d);
+    ghostLayer.appendChild(d); flashPool.push(d);
   }
 }
 function clearGhost(){
