@@ -310,7 +310,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 <body>
 
 <header>
-  <div class="wordmark">EĞİM<small>SÜRÜM 20</small></div>
+  <div class="wordmark">EĞİM<small>SÜRÜM 21</small></div>
   <div class="scores">
     <div class="scorebox best"><div class="lbl">EN İYİ</div><div class="val" id="best">0</div></div>
     <div class="scorebox"><div class="lbl">SKOR</div><div class="val" id="score">0</div></div>
@@ -331,6 +331,7 @@ button:focus-visible{outline:2px solid var(--ochre);outline-offset:3px}
 
 <div class="hand" id="hand"></div>
 <div class="footbar">
+  <button class="ghostbtn" id="liteBtn">SADE MOD</button>
   <button class="ghostbtn" id="helpBtn">NASIL OYNANIR</button>
   <button class="ghostbtn" id="mute">🔊 SES AÇIK</button>
   <button class="reset" id="reset">YENİDEN BAŞLA</button>
@@ -534,8 +535,11 @@ const REDUCED = window.matchMedia &&
    setting for both, cut the expensive extras when the screen is small. */
 const LEAN = Math.min(screen.width, screen.height) < 500 ||
              (navigator.hardwareConcurrency || 8) <= 4;
+/* A switch the player can flip. If the frame rate jumps with this on, the cost
+   is the artwork; if it does not, the cost is somewhere else entirely. */
+let lite = false;
 function shake(level){
-  if(REDUCED) return;
+  if(REDUCED || lite) return;
   const st = document.querySelector(".stage");
   const cls = "shake" + Math.min(3, level);
   st.classList.remove("shake1","shake2","shake3");
@@ -551,24 +555,40 @@ document.addEventListener("pointerdown", audioInit);
 const hudEl = document.getElementById("hud");
 let hudOn = false, frames = 0, fps = 0, moveCount = 0, moveRate = 0;
 let worstLag = 0, lagSum = 0, lagN = 0;
+let dragFrames = 0, dragFps = 0;
+/* The number that actually matters: how long after a finger movement does the
+   screen produce a frame. Anything over ~20ms is felt as drag. */
+let pendingMoveT = 0, paintSum = 0, paintN = 0, paintWorst = 0, paintAvg = 0;
 
 function hudTick(){
   frames++;
+  if(drag) dragFrames++;
+  if(pendingMoveT){
+    const dt = performance.now() - pendingMoveT;
+    pendingMoveT = 0;
+    paintSum += dt; paintN++;
+    if(dt > paintWorst) paintWorst = dt;
+  }
   requestAnimationFrame(hudTick);
 }
 requestAnimationFrame(hudTick);
 setInterval(()=>{
   fps = frames; frames = 0;
+  dragFps = dragFrames; dragFrames = 0;
   moveRate = moveCount; moveCount = 0;
-  if(!hudOn) return;
-  const avg = lagN ? (lagSum/lagN).toFixed(1) : "0.0";
+  paintAvg = paintN ? paintSum/paintN : 0;
+  if(!hudOn){ paintSum = 0; paintN = 0; paintWorst = 0; worstLag = 0; lagSum = 0; lagN = 0; return; }
+  const jsAvg = lagN ? (lagSum/lagN).toFixed(1) : "0.0";
   hudEl.textContent =
-    "FPS        " + String(fps).padStart(3) + "\n" +
-    "parmak/sn  " + String(moveRate).padStart(3) + "\n" +
-    "gecikme    " + avg + " ms  (en kotu " + worstLag.toFixed(1) + ")\n" +
-    "tas        " + document.querySelectorAll(".tile").length + "\n" +
-    "hucre      " + CELL + "px   " + (LEAN ? "LEAN" : "TAM");
+    "FPS (bos)     " + String(fps).padStart(3) + "\n" +
+    "FPS (surukle) " + String(dragFps).padStart(3) + "   <- ONEMLI OLAN\n" +
+    "parmak->kare  " + paintAvg.toFixed(1) + " ms (en kotu " + paintWorst.toFixed(0) + ")\n" +
+    "js islem      " + jsAvg + " ms\n" +
+    "parmak/sn     " + String(moveRate).padStart(3) + "\n" +
+    "tas " + document.querySelectorAll(".tile").length +
+      "  hucre " + CELL + "px  " + (LEAN ? "LEAN" : "TAM") + (lite ? "  SADE" : "");
   worstLag = 0; lagSum = 0; lagN = 0;
+  paintSum = 0; paintN = 0; paintWorst = 0;
 }, 1000);
 
 document.querySelector(".wordmark small").addEventListener("click", ()=>{
@@ -875,7 +895,7 @@ const MOTIF = [
    node and everything after that is a cheap clone. */
 const motifTpl = [];
 function motifNode(i){
-  if(!MOTIF[i]) return null;
+  if(lite || !MOTIF[i]) return null;
   if(!motifTpl[i]){
     const t = document.createElement("div");
     t.innerHTML = MOTIF[i];
@@ -909,6 +929,7 @@ function setTheme(i, announce){
 
 // shards fly out of every tile that just went
 function sparks(cells){
+  if(lite) return;
   const budget = Math.min(cells.length * (LEAN ? 1 : 3), LEAN ? 14 : 60);
   const frag = document.createDocumentFragment(), batch = [];
   for(let i=0;i<budget;i++){
@@ -932,6 +953,7 @@ function sparks(cells){
 
 // the points you just earned, where you earned them
 function shockAt(cells, chain){
+  if(lite) return;
   let sr=0, sc=0; cells.forEach(([r,c])=>{ sr+=r; sc+=c; });
   const size = CELL * (3 + chain * 1.6);
   const e = document.createElement("div");
@@ -972,6 +994,7 @@ function kitNode(kit, col){
 }
 
 function rain(chain){
+  if(lite) return;
   const kit = RAIN_KITS[Math.min(RAIN_KITS.length - 1, Math.max(0, chain - 2))];
   // chain steps overlap, so cap what can be on screen at once
   const live = boardEl.getElementsByClassName("rain").length;
@@ -1005,7 +1028,7 @@ function rain(chain){
 /* At 3x the whole tray floods with tiles and then drains away downward.
    64 plain divs, one insertion, one timer - it only fires on a deep chain. */
 function bigWipe(){
-  if(REDUCED) return;
+  if(REDUCED || lite) return;
   const frag = document.createDocumentFragment(), batch = [];
   for(let r=0;r<N;r++) for(let c=0;c<N;c++){
     const e = document.createElement("div");
@@ -1325,6 +1348,7 @@ function moveDrag(x, y){
   if(!rafId) rafId = requestAnimationFrame(flushDrag);
   const dt = performance.now() - t0;
   lagSum += dt; lagN++; if(dt > worstLag) worstLag = dt;
+  if(!pendingMoveT) pendingMoveT = t0;
 }
 
 /* Pointer capture is unreliable on mobile Safari: once the finger leaves the
@@ -1478,6 +1502,19 @@ function start(){
   setDir(); dealHand(); sizeUp();
 }
 const muteBtn = document.getElementById("mute");
+const liteBtn = document.getElementById("liteBtn");
+function applyLite(){
+  liteBtn.textContent = lite ? "SADE MOD ✓" : "SADE MOD";
+  liteBtn.style.opacity = lite ? .85 : .45;
+  motifTpl.length = 0;
+  paintMotifs();
+}
+liteBtn.addEventListener("click", ()=>{
+  lite = !lite;
+  store.set("egim.lite", lite ? "1" : "0");
+  applyLite();
+});
+
 function applyMute(){
   muteBtn.textContent = muted ? "🔇 SES KAPALI" : "🔊 SES AÇIK";
   muteBtn.style.opacity = muted ? .3 : .45;
@@ -1489,6 +1526,8 @@ muteBtn.addEventListener("click", ()=>{
 });
 muted = store.get("egim.muted") === "1";
 applyMute();
+lite = store.get("egim.lite") === "1";
+applyLite();
 // how-to-play overlay
 const helpEl = document.getElementById("help");
 function showHelp(){ helpEl.classList.add("show"); }
